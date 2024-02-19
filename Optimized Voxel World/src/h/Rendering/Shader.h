@@ -1,0 +1,26 @@
+#pragma once
+#ifndef SHADER_H
+#define SHADER_H
+
+#include <string>
+#include <h/glm/glm.hpp> 
+#include <h/glm/gtc/type_ptr.hpp> 
+
+class Shader {
+public:
+	unsigned int id;
+
+	Shader();
+	Shader(const char* filepath);
+
+	void use();
+	void setBool(const std::string& name, bool value) const;
+	void setInt(const std::string& name, int value) const;
+	void setFloat(const std::string& name, float value) const;
+	void setVec3(const std::string& name, glm::vec3& value) const;
+	void setUniform4fv(const std::string& name, glm::mat4& transform) const;
+	void deleteProgram();
+};
+
+#endif
+

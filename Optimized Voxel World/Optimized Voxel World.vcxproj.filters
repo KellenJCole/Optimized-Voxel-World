@@ -1,0 +1,182 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\Rendering">
+      <UniqueIdentifier>{e3ac871b-d264-4868-be51-b65cde9038f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Rendering\Buffers">
+      <UniqueIdentifier>{896d42bb-7c2d-4459-839e-bd0b0d6b5cef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Rendering\Textures">
+      <UniqueIdentifier>{36acf180-ae78-454a-9032-1fb07d4b05ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Debug">
+      <UniqueIdentifier>{07b92f51-0afc-4688-8591-4312da0b31d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Rendering\Camera">
+      <UniqueIdentifier>{a4a534e6-0179-4f00-b69c-170edc3bf279}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Rendering\Shader">
+      <UniqueIdentifier>{6d2e6830-6a37-4644-ab3b-8d5435286aab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\World Related">
+      <UniqueIdentifier>{eeaea2e1-391c-4ba7-9655-182cf1058b95}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Debug">
+      <UniqueIdentifier>{09048832-aa11-4ae0-a5cc-f948b52d4efd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Rendering">
+      <UniqueIdentifier>{ce9397cb-2115-4746-98f7-a19b18ffa5d4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Rendering\Buffers">
+      <UniqueIdentifier>{faf41885-f613-4e00-bec1-b153f4031843}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Rendering\Camera">
+      <UniqueIdentifier>{b62d2c70-5bfe-4c8e-9189-0bee5a40a81d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Rendering\Shader">
+      <UniqueIdentifier>{0c3c652d-e86a-4b8f-aa22-118aaade1e26}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Rendering\Textures">
+      <UniqueIdentifier>{f755547e-b47b-4987-93ca-ab376fb9f630}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\World Related">
+      <UniqueIdentifier>{bd3c834e-06f7-4617-ba70-ef4eaebbfab7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\cpp\Rendering\Shader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\BlockGeometry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\Camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\GLErrorCatcher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\IndexBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\InstanceBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\Renderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\Texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\TextureLibrary.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\VertexArray.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\VertexBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Terrain\Chunk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Terrain\ChunkLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Terrain\WorldManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\VoxelEngine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\h\FastNoise-master\FastNoise.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\h\Rendering\BlockGeometry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\GLErrorCatcher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\InstanceBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\IndexBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Renderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\VertexArray.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\TextureLibrary.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\VertexBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\VertexBufferLayout.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\stb_image\stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Terrain\Chunk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Terrain\ChunkLoader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Terrain\WorldManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\VoxelEngine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\FastNoise-master\FastNoise.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\res\shaders\Block.shader" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="src\res\textures\bedrock.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="src\res\textures\dirt.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="src\res\textures\stone.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+</Project>
