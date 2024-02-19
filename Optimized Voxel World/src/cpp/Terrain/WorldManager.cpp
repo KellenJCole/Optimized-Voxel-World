@@ -31,7 +31,7 @@ void WorldManager::update() {
 
 void WorldManager::updateRenderChunks(int originX, int originZ) {
 	if (!currentlyLoadingChunks) {
-		auto unloadAndLoadVectors = chunkLoader.getUnloadAndLoadList(originX, originZ, 70);
+		auto unloadAndLoadVectors = chunkLoader.getUnloadAndLoadList(originX, originZ, 20);
 		unloadChunks(unloadAndLoadVectors.first);
 
 		if (std::get<1>(unloadAndLoadVectors).size() > 0) {

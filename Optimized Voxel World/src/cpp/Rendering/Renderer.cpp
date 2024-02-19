@@ -32,7 +32,7 @@ bool Renderer::initialize() {
 	vertexArray.Unbind();
 
 	GLCall(glEnable(GL_DEPTH_TEST));
-	GLCall(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));				// Set to GL_LINE to view mesh.
+	GLCall(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));				// Set to GL_LINE to view mesh.
 	GLCall(glEnable(GL_FRAMEBUFFER_SRGB));							 
 
 	return true;

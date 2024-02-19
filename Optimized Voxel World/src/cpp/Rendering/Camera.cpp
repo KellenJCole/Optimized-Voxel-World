@@ -14,7 +14,7 @@ Camera::Camera(float inputSensitivity)
 	firstMouse(true),
 	sensitivity(inputSensitivity)
 {
-	projection = glm::perspective(glm::radians(45.f), 1600.0f / 900.0f, 0.1f, 5000.0f);
+	projection = glm::perspective(glm::radians(90.f), 1600.0f / 900.0f, 0.1f, 5000.0f);
 	view = glm::mat4(1.0f);
 	updateCameraVectors(); // Ensure initial direction vectors are correct
 

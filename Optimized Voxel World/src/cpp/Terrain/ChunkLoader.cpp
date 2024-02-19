@@ -6,14 +6,14 @@ ChunkLoader::ChunkLoader() {
 
 }
 
-std::pair<ChunkCoordList, ChunkCoordList> ChunkLoader::getUnloadAndLoadList(int chunkX, int chunkZ, int renderRadius) {
-	ChunkSet currentChunksInView;
-	ChunkCoordList unloadList, loadList, surroundList;
+std::pair<std::vector<std::pair<int, int>>, std::vector<std::pair<int, int>>> ChunkLoader::getUnloadAndLoadList(int chunkX, int chunkZ, int renderRadius) {
+	std::unordered_set<std::pair<int, int>, Hash> currentChunksInView;
+	std::vector <std::pair<int, int>> unloadList, loadList, surroundList;
 
 	for (int x = chunkX - renderRadius; x <= chunkX + renderRadius; x++) {
 		for (int z = chunkZ - renderRadius; z <= chunkZ + renderRadius; z++) {
 			if ((x - chunkX) * (x - chunkX) + (z - chunkZ) * (z - chunkZ) <= renderRadius * renderRadius) {
-				ChunkCoord currentChunk = { x, z };
+				std::pair<int, int> currentChunk = { x, z };
 				currentChunksInView.insert(currentChunk);
 			}
 		}

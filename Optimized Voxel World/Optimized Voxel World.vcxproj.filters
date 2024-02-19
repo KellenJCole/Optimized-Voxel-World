@@ -108,6 +108,9 @@
     <ClCompile Include="src\h\FastNoise-master\FastNoise.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\cpp\Terrain\GreedyGraph.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\h\Rendering\BlockGeometry.h">
@@ -162,6 +165,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\h\FastNoise-master\FastNoise.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Terrain\GreedyGraph.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
