@@ -1,6 +1,9 @@
 #pragma once
 #include "h/glm/glm.hpp"
+#include "h/glm/gtc/matrix_access.hpp"
 #include "h/glm/gtc/matrix_transform.hpp"
+#include <array>
+#include <vector>
 
 class Camera {
 public:
@@ -20,7 +23,14 @@ public:
 	glm::vec3 getCameraUp() const { return cameraUp; }
 	glm::mat4 getProjection() const { return projection; }
 	glm::mat4 getView() const { return view; }
+	std::vector<std::pair<int, int>> getVisibleChunks(int renderDistance);
+
+
 private:
+	bool isChunkVisible(const std::pair<int, int>& chunkCoord, const std::array<glm::vec4, 6>& planes) const;
+	std::array<glm::vec4, 6> calculateFrustumPlanes() const;
+
+	std::array<glm::vec4, 6> frustumPlanes;
 	glm::vec3 cameraPos; // The point in 3D space at which the camera resides
 	glm::vec3 cameraFront; // The direction the camera is facing.
 	glm::vec3 cameraUp; // The up direction vector. It never changes.

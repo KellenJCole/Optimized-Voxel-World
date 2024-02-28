@@ -6,42 +6,31 @@ ChunkLoader::ChunkLoader() {
 
 }
 
-std::pair<std::vector<std::pair<int, int>>, std::vector<std::pair<int, int>>> ChunkLoader::getUnloadAndLoadList(int chunkX, int chunkZ, int renderRadius) {
-	std::unordered_set<std::pair<int, int>, Hash> currentChunksInView;
-	std::vector <std::pair<int, int>> unloadList, loadList, surroundList;
+std::vector<std::pair<int, int>> ChunkLoader::getLoadList(int chunkX, int chunkZ, int renderRadius) {
+	std::vector<std::pair<int, int>> loadList;
 
 	for (int x = chunkX - renderRadius; x <= chunkX + renderRadius; x++) {
 		for (int z = chunkZ - renderRadius; z <= chunkZ + renderRadius; z++) {
-			if ((x - chunkX) * (x - chunkX) + (z - chunkZ) * (z - chunkZ) <= renderRadius * renderRadius) {
+			if ((x - chunkX) * (x - chunkX) + (z - chunkZ) * (z - chunkZ) <= renderRadius * renderRadius && x != chunkX - renderRadius && x != chunkX + renderRadius && z != chunkZ - renderRadius && z != chunkZ + renderRadius) {
 				std::pair<int, int> currentChunk = { x, z };
-				currentChunksInView.insert(currentChunk);
+				loadList.push_back(currentChunk);
 			}
 		}
 	}
 
-	// Determine which loaded chunks are no longer in view to unload
-	for (const auto& chunk : loadedChunks) {
-		if (currentChunksInView.find(chunk) == currentChunksInView.end()) {
-			unloadList.push_back(chunk);
-		}
-	}
+	std::sort(loadList.begin(), loadList.end(), [chunkX, chunkZ](const auto& left, const auto& right) {
+		int dxLeft = chunkX - left.first;
+		int dzLeft = chunkZ - left.second;
+		int distSquaredLeft = dxLeft * dxLeft + dzLeft * dzLeft;
 
-	// Determine which chunks are in view but not currently loaded to load
-	for (const auto& chunk : currentChunksInView) {
-		if (loadedChunks.find(chunk) == loadedChunks.end()) {
-			loadList.push_back(chunk);
-		}
-	}
+		int dxRight = chunkX - right.first;
+		int dzRight = chunkZ - right.second;
+		int distSquaredRight = dxRight * dxRight + dzRight * dzRight;
 
-	// Update loadedChunks based on unloadList and loadList
-	for (const auto& chunk : unloadList) {
-		loadedChunks.erase(chunk);
-	}
-	for (const auto& chunk : loadList) {
-		loadedChunks.insert(chunk);
-	}
+		// Compare squared distances
+		return distSquaredLeft < distSquaredRight;
+		});
 
-	std::cout << "Rendered " << loadList.size() << " chunks.\n";
-	return { unloadList, loadList };
+	return loadList;
 
 }

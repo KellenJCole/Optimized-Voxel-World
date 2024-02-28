@@ -13,7 +13,5 @@ struct Hash {
 class ChunkLoader {
 public:
 	ChunkLoader();
-	std::pair<std::vector<std::pair<int, int>>, std::vector<std::pair<int, int>>> getUnloadAndLoadList(int worldX, int worldZ, int renderRadius);
-private:
-	std::unordered_set<std::pair<int, int>, Hash> loadedChunks;
+	std::vector<std::pair<int, int>> getLoadList(int worldX, int worldZ, int renderRadius);
 };

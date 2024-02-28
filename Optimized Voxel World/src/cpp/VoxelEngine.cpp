@@ -9,9 +9,10 @@ VoxelEngine::VoxelEngine() :
 
     currChunkX = camera.getCameraPos().x / 16;
     currChunkZ = camera.getCameraPos().z / 16;
-    lastChunkX = camera.getCameraPos().x / 16;
-    lastChunkZ = camera.getCameraPos().z / 16;
+    lastChunkX = currChunkX;
+    lastChunkZ = lastChunkZ;
 
+    renderRadius = 50;
 }
 
 bool VoxelEngine::initialize() {
@@ -20,8 +21,8 @@ bool VoxelEngine::initialize() {
         return false;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     window = glfwCreateWindow(1600, 900, "Voxel Engine", NULL, NULL);
@@ -55,6 +56,7 @@ bool VoxelEngine::initialize() {
     }
     shader = Shader("src/res/shaders/Block.shader");
     camera = Camera(0.2); // 0.2 is our camera's sensitivity.
+    swapRenderMethodCooldown = 0.0f;
 
     worldManager.setCamAndShaderPointers(&shader, &camera);
 
@@ -65,7 +67,7 @@ bool VoxelEngine::initialize() {
 
 void VoxelEngine::run() {
     std::cout << "Entering Voxel Engine loop. ProcessInputs->Update->Render\n";
-    worldManager.updateRenderChunks(0, 0);
+    worldManager.updateRenderChunks(0, 0, renderRadius);
 
     // TEMP CODE
     double timeAtLastFPSCheck = glfwGetTime();
@@ -90,23 +92,41 @@ void VoxelEngine::run() {
 }
 
 void VoxelEngine::processInput() {
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+    float currFrame = glfwGetTime();
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {                         // W
         camera.processKeyboardInput(GLFW_KEY_W, deltaTime);
     }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {                         // S
         camera.processKeyboardInput(GLFW_KEY_S, deltaTime);
     }
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {                         // A
         camera.processKeyboardInput(GLFW_KEY_A, deltaTime);
     }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {                         // D
         camera.processKeyboardInput(GLFW_KEY_D, deltaTime);
     }
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {                // Left shift -> move down
         camera.processKeyboardInput(GLFW_KEY_LEFT_SHIFT, deltaTime);
     }
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {                     // Space -> move up
         camera.processKeyboardInput(GLFW_KEY_SPACE, deltaTime);
+    }
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {                         // F -> Switch polygon mode between fill and line
+        if (currFrame - swapRenderMethodCooldown > 0.3f) {
+            swapRenderMethodCooldown = currFrame;
+            worldManager.switchRenderMethod();
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {                        // Up arrow -> Increase render radius by 1
+        renderRadius += 5;
+        worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius);
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {                      // Down arrow -> Decrease render radius by 1 - broken DONT USE
+        if (renderRadius > 1) {
+            renderRadius--;
+            worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius);
+        }
     }
 }
 
@@ -114,18 +134,18 @@ void VoxelEngine::update() {
     currChunkX = camera.getCameraPos().x / 16;
     currChunkZ = camera.getCameraPos().z / 16;
     
+    worldManager.update();
+
     if (currChunkX != lastChunkX || currChunkZ != lastChunkZ) {
-        worldManager.updateRenderChunks(currChunkX, currChunkZ);
+        worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius);
     }
     lastChunkX = currChunkX;
     lastChunkZ = currChunkZ;
-
-    worldManager.update();
 }
 
 void VoxelEngine::render() {
     GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-    GLCall(glClearColor(0.0f, 0.804f, 1.0f, 1.0f));
+    GLCall(glClearColor(0.529f, 0.808f, 0.922f, 1.0f));
     
     glm::vec3 viewPos = camera.getCameraPos();
     camera.update();

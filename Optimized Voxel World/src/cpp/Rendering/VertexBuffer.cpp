@@ -2,24 +2,38 @@
 #include "h/Rendering/GLErrorCatcher.h"
 #include <iostream>
 
-VertexBuffer::VertexBuffer() {
+VertexBuffer::VertexBuffer() : vertexBuffer_id(0), valid(false) {
 
+}
+
+bool VertexBuffer::isValid() {
+	return valid;
 }
 
 void VertexBuffer::create(const void* data, unsigned int size) {
 	GLCall(glGenBuffers(1, &vertexBuffer_id));
 	Bind();
-	GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW));
+	GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_DYNAMIC_DRAW)); // Directly use data if provided
 	Unbind();
+	valid = true;
 }
 
+void VertexBuffer::clear() {
+	Bind();
+	glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_DYNAMIC_DRAW);
+}
+
+// For full replacement
 void VertexBuffer::update(const void* data, unsigned int size) {
 	Bind();
-	GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW));
+	GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_DYNAMIC_DRAW)); // For full replacement
 }
 
 void VertexBuffer::destroy() {
-	GLCall(glDeleteBuffers(1, &vertexBuffer_id));
+	if (valid) {
+		GLCall(glDeleteBuffers(1, &vertexBuffer_id));
+		valid = false;
+	}
 }
 
 void VertexBuffer::Bind() const {
@@ -31,5 +45,5 @@ void VertexBuffer::Unbind() const {
 }
 
 VertexBuffer::~VertexBuffer() {
-	GLCall(glDeleteBuffers(1, &vertexBuffer_id));
+	destroy();
 }

@@ -2,7 +2,7 @@
 #include <vector>
 #include <map>
 #include <set>
-#include <h/Terrain/GreedyGraph.h>
+#include <h/Terrain/GreedyAlgorithm.h>
 #include <h/glm/glm.hpp>
 #include <h/FastNoise-master/FastNoise.h>
 
@@ -18,32 +18,34 @@ enum BlockFace {
 class WorldManager;
 class Chunk {
 public:
+	// Setup
 	Chunk();
 	void generateChunk();
-	void setWholeChunkMeshes();
-	std::vector<glm::vec3> getMeshByFaceType(int faceType);
-	std::vector<std::pair<GreedyGraph, int>> getGreedyMeshByFaceType(int faceType);
+	void setWorldReference(WorldManager* wm);
+
+	void unload();
+
+	// Coordinate functions
 	void setChunkCoords(int cx, int cz);
 	int getChunkX() { return chunkX; }
 	int getChunkZ() { return chunkZ; }
+	void setWholeChunkMeshes();
+	std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> getGreedyMeshByFaceType(int faceType);
 	int getBlockAt(int worldX, int worldY, int worldZ);
-	void setWorldReference(WorldManager* wm);
-	void unload();
+	~Chunk();
 private:
 	int convert3DCoordinatesToFlatIndex(int x, int y, int z);
 	glm::ivec3 convertFlatIndexTo3DCoordinates(int flatIndex);
 	void greedyMesh();
-	void firstPassOn(BlockFace f);
-	void populatePlanes();
 
 	unsigned char checkNeighbors(int blockIndex); // Returns a bitmask representing which faces are visible and which are not
 
+	GreedyAlgorithm ga;
 	std::vector<unsigned char> chunk; // delete this upon unload
 	std::map<BlockFace, std::vector<unsigned int>> visByFaceType; // keep before greedy meshing
-	std::map<BlockFace, std::vector<std::vector<std::vector<unsigned char>>>> planes;
 	int chunkX, chunkZ;
 	WorldManager* world;
 	FastNoise noise;
-
-	std::vector<std::pair<GreedyGraph, int>> Greedy_Graphs[6];
+	bool hasBeenGenerated;
+	BlockFace iFaces[6];
 };

@@ -1,63 +1,108 @@
 #include "h/Rendering/Renderer.h"
+#include "h/Rendering/VertexBufferLayout.h"
 #include "h/Rendering/GLErrorCatcher.h"
 
 Renderer::Renderer() {
+ 
+}
+
+Renderer::~Renderer() {
+    cleanup();
 }
 
 bool Renderer::initialize() {
+    vertexArray.create();
 
-	vertexArray.create();
-	vertexArray.Bind();
-	vertexBuffer.create(BlockGeometry::vertices, sizeof(BlockGeometry::vertices));
-	//vertexBuffer.Bind();
-	/*
-	IndexBuffer index
-				0	-x faces
-				1	+x faces
-				2	-y faces
-				3	+y faces
-				4	-z faces
-				5	+z faces
-	*/
-	for (int i = 0; i < 6; i++) {
-		indexBuffer[i].create(BlockGeometry::indices[i], 6);
-	}
+    GLCall(glEnable(GL_DEPTH_TEST));
+    GLCall(glEnable(GL_CULL_FACE));
+    GLCall(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+    gl_fill = true;
+    GLCall(glEnable(GL_FRAMEBUFFER_SRGB)); // Enable sRGB for gamma correction
 
-	layout.Push<float>(3);
-	layout.Push<float>(2);
-	layout.Push<float>(3);
-	vertexArray.AddBuffer(vertexBuffer, layout);
+    setupVertexAttributes();
 
-	instanceBuffer.create(5000000);
-	vertexArray.Unbind();
+    //glfwWindowHint(GLFW_SAMPLES, 16);
+    //glEnable(GL_MULTISAMPLE);
 
-	GLCall(glEnable(GL_DEPTH_TEST));
-	GLCall(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));				// Set to GL_LINE to view mesh.
-	GLCall(glEnable(GL_FRAMEBUFFER_SRGB));							 
-
-	return true;
+    return true;
 }
 
-void Renderer::instancedRenderByFace(std::vector<glm::vec3> translations, int faceType, int blockType) {
-	if (translations.size() == 0) {
-		return;
-	}
+void Renderer::setupVertexAttributes() {
+    layout.PushFloat(3); // Position
+    layout.PushFloat(2); // TexCoords
+    layout.PushInt(1); // Normal + blockType * 16
+}
 
-	vertexArray.Bind();
-	instanceBuffer.update(translations.data(), translations.size() * sizeof(glm::vec3));
+void Renderer::toggleFillLine() {
+    gl_fill = !gl_fill;
+    if (gl_fill) {
+        GLCall(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+    }
+    else {
+        GLCall(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
+    }
+}
 
-	IndexBuffer* tempIndexBufferPtr = nullptr;
-	tempIndexBufferPtr = &indexBuffer[faceType];
-	tempIndexBufferPtr->Bind();
 
-	GLCall(glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr, static_cast<GLsizei>(translations.size())));
+void Renderer::render() {
+    vertexArray.Bind();
+    for (auto& coords : chunksBeingRendered) {
+        if (chunkToVertexBuffer.find(coords) != chunkToVertexBuffer.end() && chunkToIndexBuffer.find(coords) != chunkToIndexBuffer.end()) {
+            chunkToVertexBuffer[coords].Bind();
+            chunkToIndexBuffer[coords].Bind();
+            vertexArray.AddBuffer(chunkToVertexBuffer[coords], layout);
+            GLCall(glDrawElements(GL_TRIANGLES, chunkToIndexBuffer[coords].GetCount(), GL_UNSIGNED_INT, nullptr));
+            chunkToVertexBuffer[coords].Unbind();
+            chunkToIndexBuffer[coords].Unbind();
+        }
+    }
+    vertexArray.Unbind();
+}
 
-	tempIndexBufferPtr->Unbind();
-	vertexArray.Unbind();
+void Renderer::updateRenderChunks(std::vector<std::pair<int, int>>& renderChunks) {
+    chunksBeingRendered = renderChunks;
 }
 
 void Renderer::cleanup() {
-	vertexArray.destroy();
-	vertexBuffer.destroy();
-	for (int i = 0; i < 6; i++) indexBuffer[i].destroy();
+    for (auto& pair : chunkToVertexBuffer) {
+        pair.second.destroy();
+    }
+    for (auto& pair : chunkToIndexBuffer) {
+        pair.second.destroy();
+    }
+    chunkToVertexBuffer.clear();
+    chunkToIndexBuffer.clear();
+    vertexArray.destroy();
+}
+
+void Renderer::updateVertexBuffer(const std::vector<Vertex>& vertices, std::pair<int, int> coords) {
+    auto it = chunkToVertexBuffer.find(coords);
+    if (it == chunkToVertexBuffer.end()) {
+        chunkToVertexBuffer[coords].create(vertices.data(), vertices.size() * sizeof(Vertex));
+    }
+    else {
+        it->second.update(vertices.data(), vertices.size() * sizeof(Vertex));
+    }
+}
+
+void Renderer::updateIndexBuffer(const std::vector<unsigned int>& indices, std::pair<int, int> coords) {
+    bool bufferExists = chunkToIndexBuffer.find(coords) != chunkToIndexBuffer.end();
+
+    if (!bufferExists) {
+        chunkToIndexBuffer[coords].create(indices.data(), indices.size());
+    }
+    else {
+        chunkToIndexBuffer[coords].update(indices.data(), indices.size());
+    }
+}
+
+void Renderer::eraseBuffers(const std::pair<int, int>& eraseKey) {
+    if (chunkToVertexBuffer.find(eraseKey) != chunkToVertexBuffer.end()) {
+        chunkToVertexBuffer[eraseKey].destroy(); // Free resources
+        chunkToVertexBuffer.erase(eraseKey);
+    }
+    if (chunkToIndexBuffer.find(eraseKey) != chunkToIndexBuffer.end()) {
+        chunkToIndexBuffer[eraseKey].destroy(); // Free resources
+        chunkToIndexBuffer.erase(eraseKey);
+    }
 }

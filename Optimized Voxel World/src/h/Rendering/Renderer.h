@@ -1,27 +1,40 @@
 #pragma once
-#include <vector>
 #include "h/Rendering/VertexArray.h"
 #include "h/Rendering/VertexBuffer.h"
-#include "h/Rendering/VertexBufferLayout.h"
 #include "h/Rendering/IndexBuffer.h"
-#include "h/Rendering/InstanceBuffer.h"
-#include "h/Rendering/BlockGeometry.h"
+#include "h/Rendering/Shader.h"
+#include "h/Rendering/VertexBufferLayout.h"
+#include <vector>
+#include <map>
 #include <h/glm/glm.hpp>
 
-class BlockGeometry;
+struct Vertex {
+    glm::vec3 position;
+    glm::vec2 texCoords;
+    int normalBlockType; // blockType = blockType * 16
+};
+
 class Renderer {
 public:
-	Renderer();
-	bool initialize();
-	//void passMouseMovementToRendererCamera(double xpos, double ypos);
-	//void passKeyboardInputToRendererCamera();
-	void instancedRenderByFace(std::vector<glm::vec3> translations, int faceType, int blockType);
-	void cleanup();
+    Renderer();
+    ~Renderer();
+    bool initialize();
+    void render();
+    void updateRenderChunks(std::vector<std::pair<int, int>>& renderChunks);
+    void cleanup();
+    void toggleFillLine();
+    void updateVertexBuffer(const std::vector<Vertex>& vertices, std::pair<int, int> coords);
+    void updateIndexBuffer(const std::vector<unsigned int>& indices, std::pair<int, int> coords);
+    void eraseBuffers(const std::pair<int, int>& eraseKey);
 private:
-	VertexArray vertexArray;
-	VertexBuffer vertexBuffer;
-	VertexBufferLayout layout;
-	IndexBuffer indexBuffer[6];
-	InstanceBuffer instanceBuffer;
-	
+    VertexArray vertexArray;
+    VertexBufferLayout layout;
+    std::map<std::pair<int, int>, VertexBuffer> chunkToVertexBuffer;
+    std::map<std::pair<int, int>, IndexBuffer> chunkToIndexBuffer;
+
+    std::vector<std::pair<int, int>> chunksBeingRendered;
+
+    void setupVertexAttributes();
+
+    bool gl_fill;
 };

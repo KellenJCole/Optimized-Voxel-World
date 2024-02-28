@@ -2,14 +2,22 @@
 #include "h/Rendering/GLErrorCatcher.h"
 
 IndexBuffer::IndexBuffer() {
-
+	valid = false;
 }
 
 void IndexBuffer::create(const unsigned int* data, unsigned int count) {
 	GLCall(glGenBuffers(1, &indexBuffer_id));
 	Bind();
-	GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(unsigned int), data, GL_STATIC_DRAW));
+	GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(unsigned int), data, GL_DYNAMIC_DRAW));
 	Unbind();
+	valid = true;
+	m_count = count; // Set the count here
+}
+
+void IndexBuffer::update(const unsigned int* data, unsigned int count) {
+	Bind();
+	GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(unsigned int), data, GL_DYNAMIC_DRAW));
+	m_count = count; // Update the count
 }
 
 void IndexBuffer::Bind() const {
@@ -20,9 +28,25 @@ void IndexBuffer::Unbind() const {
 }
 
 void IndexBuffer::destroy() {
-	GLCall(glDeleteBuffers(1, &indexBuffer_id));
+	if (valid) {
+		GLCall(glDeleteBuffers(1, &indexBuffer_id));
+		valid = false;
+	}
+}
+
+void IndexBuffer::clear() {
+	Bind();
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0, NULL, GL_DYNAMIC_DRAW);
 }
 
 IndexBuffer::~IndexBuffer() {
-	GLCall(glDeleteBuffers(1, &indexBuffer_id));
+	destroy();
+}
+
+bool IndexBuffer::isValid() {
+	return valid;
+}
+
+unsigned int IndexBuffer::GetCount() {
+	return m_count;
 }

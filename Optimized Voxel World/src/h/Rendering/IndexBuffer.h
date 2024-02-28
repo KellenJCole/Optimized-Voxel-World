@@ -4,6 +4,9 @@ class IndexBuffer {
 public:
 	IndexBuffer();
 	void create(const unsigned int* data, unsigned int count);
+	void update(const unsigned int* data, unsigned int count);
+	void clear();
+	bool isValid();
 	~IndexBuffer();
 
 	void Bind() const;
@@ -11,8 +14,9 @@ public:
 
 	void destroy();
 
-	inline unsigned int GetCount() const { return m_count; }
+	unsigned int GetCount();
 private:
+	bool valid;
 	unsigned int indexBuffer_id;
 	unsigned int m_count;
 };

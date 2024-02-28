@@ -7,7 +7,7 @@
 #include "h/Rendering/Camera.h"
 
 class VoxelEngine {
-public:
+public: 
 	VoxelEngine(); // Sets up basic variables
 	bool initialize(); // Sets up GLFWwindow and OpenGL Context
 	void run(); // Main game loop
@@ -33,4 +33,8 @@ private:
 
 	int currChunkX, currChunkZ;
 	int lastChunkX, lastChunkZ;
+
+	int renderRadius;
+
+	float swapRenderMethodCooldown;
 };

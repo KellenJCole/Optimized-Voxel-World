@@ -1,14 +1,13 @@
 #pragma once
 #include <unordered_map>
 #include <set>
-#include <list>
 #include <future>
+#include <mutex>
 #include "h/Rendering/Renderer.h"
 #include "h/Terrain/ChunkLoader.h"
 #include "h/Terrain/Chunk.h"
-#include "h/Rendering/TextureLibrary.h"
+#include "h/Rendering/Texture.h"
 #include "h/Rendering/Camera.h"
-#include "h/Rendering/Shader.h"
 
 struct PairHash {
 	size_t operator()(const std::pair<int, int>& pair) const {
@@ -18,34 +17,54 @@ struct PairHash {
 	}
 };
 
+
+using ChunkCoordPair = std::pair<int, int>;
 class WorldManager {
 public:
 	WorldManager();
 	bool initialize();
 	void update();
-	void updateRenderChunks(int originX, int originZ);
+	void updateRenderChunks(int originX, int originZ, int renderRadius);
 	void render();
 	void cleanup();
 	void setCamAndShaderPointers(Shader* sha, Camera* cam);
 	int getBlockAtGlobal(int worldX, int worldY, int worldZ);
+	void switchRenderMethod();
 private:
-	void genAllFaces();
+	void addQuadVerticesAndIndices(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>> quad, ChunkCoordPair chunkCoords, int faceType, int offset);
+	void genMeshForSingleChunk(ChunkCoordPair key);
+	void markChunkReadyForRender(std::pair<int, int> key);
+
 	void loadChunksAsync(const std::vector<std::pair<int, int>>& loadChunks);
-	void unloadChunks(const std::vector<std::pair<int, int>>& unloadChunks);
+	void unloadChunks(const std::vector<std::pair<int, int>>& loadChunks);
+
+	void updateRenderBuffers();
+
+	glm::vec3 calculatePosition(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner, int faceType, ChunkCoordPair cxcz, int offset);
+	glm::vec2 calculateTexCoords(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner);
+
 	Renderer renderer;
 	ChunkLoader chunkLoader;
-	TextureLibrary textureLibrary;
-	std::unordered_set<std::pair<int, int>, PairHash> drawChunks;
-	std::unordered_set <std::pair<int, int>, PairHash> createdForMeshes;
-	std::unordered_map<std::pair<int, int>, Chunk, PairHash> worldMap;
-	std::map<std::pair<int, int>, std::vector<glm::vec3>> meshesByFace[6];
-	std::vector<glm::vec3> allFaces[6];
+	Texture blockTextureArray;
+
+	std::unordered_map<ChunkCoordPair, Chunk, PairHash> worldMap;
+	std::unordered_map<ChunkCoordPair, std::vector<Vertex>, PairHash> verticesByChunk;
+	std::unordered_map<ChunkCoordPair, std::vector<unsigned int>, PairHash> indicesByChunk;
+	std::unordered_set<ChunkCoordPair,  PairHash> preparedChunks;
+
+	// SHADER CAMERA LIGHTS
 	Shader* shader;
 	Camera* camera;
 	glm::vec3 lightPos;
 	glm::vec3 lightColor;
 
+	// MULTITHREAD
 	std::future<void> loadFuture;
-	bool currentlyLoadingChunks;
+	std::mutex mtx;
+
+	float lastFrustumCheck;
+	std::atomic<bool> updatedRenderChunks;
+	int renderRadius;
+	std::atomic<bool> stopAsync;
 
 };
