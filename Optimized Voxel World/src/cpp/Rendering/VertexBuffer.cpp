@@ -13,7 +13,7 @@ bool VertexBuffer::isValid() {
 void VertexBuffer::create(const void* data, unsigned int size) {
 	GLCall(glGenBuffers(1, &vertexBuffer_id));
 	Bind();
-	GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_DYNAMIC_DRAW)); // Directly use data if provided
+	GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_DYNAMIC_DRAW));
 	Unbind();
 	valid = true;
 }
@@ -26,7 +26,7 @@ void VertexBuffer::clear() {
 // For full replacement
 void VertexBuffer::update(const void* data, unsigned int size) {
 	Bind();
-	GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_DYNAMIC_DRAW)); // For full replacement
+	GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_DYNAMIC_DRAW));
 }
 
 void VertexBuffer::destroy() {

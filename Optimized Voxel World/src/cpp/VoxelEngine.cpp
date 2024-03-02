@@ -12,7 +12,7 @@ VoxelEngine::VoxelEngine() :
     lastChunkX = currChunkX;
     lastChunkZ = lastChunkZ;
 
-    renderRadius = 50;
+    renderRadius = 30;
 }
 
 bool VoxelEngine::initialize() {
@@ -44,6 +44,7 @@ bool VoxelEngine::initialize() {
 
     glfwSetCursorPosCallback(window, cursor_position_callback);
 
+
     if (glewInit() != GLEW_OK) {
         std::cout << "glewInit() != GLEW_OK\n";
         return false;
@@ -59,6 +60,8 @@ bool VoxelEngine::initialize() {
     swapRenderMethodCooldown = 0.0f;
 
     worldManager.setCamAndShaderPointers(&shader, &camera);
+    player.setCamera(&camera);
+    player.setWorld(&worldManager);
 
     std::cout << "VoxelEngine.initialize() successful\n";
 
@@ -95,28 +98,31 @@ void VoxelEngine::processInput() {
     float currFrame = glfwGetTime();
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {                         // W
-        camera.processKeyboardInput(GLFW_KEY_W, deltaTime);
+        player.processKeyboardInput(GLFW_KEY_W, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {                         // S
-        camera.processKeyboardInput(GLFW_KEY_S, deltaTime);
+        player.processKeyboardInput(GLFW_KEY_S, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {                         // A
-        camera.processKeyboardInput(GLFW_KEY_A, deltaTime);
+        player.processKeyboardInput(GLFW_KEY_A, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {                         // D
-        camera.processKeyboardInput(GLFW_KEY_D, deltaTime);
+        player.processKeyboardInput(GLFW_KEY_D, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {                // Left shift -> move down
-        camera.processKeyboardInput(GLFW_KEY_LEFT_SHIFT, deltaTime);
+        player.processKeyboardInput(GLFW_KEY_LEFT_SHIFT, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {                     // Space -> move up
-        camera.processKeyboardInput(GLFW_KEY_SPACE, deltaTime);
+        player.processKeyboardInput(GLFW_KEY_SPACE, deltaTime);
     }
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {                         // F -> Switch polygon mode between fill and line
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {                         // F -> Toggle polygon mode between fill and line
         if (currFrame - swapRenderMethodCooldown > 0.3f) {
             swapRenderMethodCooldown = currFrame;
             worldManager.switchRenderMethod();
         }
+    }
+    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) {                         // G -> Toggle gravity
+        player.toggleGravity();
     }
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {                        // Up arrow -> Increase render radius by 1
         renderRadius += 5;
@@ -128,9 +134,17 @@ void VoxelEngine::processInput() {
             worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius);
         }
     }
+
+    int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT); // Left Click -> Break blocks
+    if (state == GLFW_PRESS) {
+        player.processKeyboardInput(GLFW_MOUSE_BUTTON_LEFT, deltaTime);
+    }
+
 }
 
 void VoxelEngine::update() {
+    player.update(deltaTime);
+
     currChunkX = camera.getCameraPos().x / 16;
     currChunkZ = camera.getCameraPos().z / 16;
     

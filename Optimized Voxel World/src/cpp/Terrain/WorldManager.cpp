@@ -10,6 +10,7 @@ WorldManager::WorldManager() :
 	lastFrustumCheck = (float)glfwGetTime();
 
 	stopAsync.store(false);
+	chunkUpdate.store(false);
 }
 
 bool WorldManager::initialize() {
@@ -19,21 +20,21 @@ bool WorldManager::initialize() {
 		return false;
 	}
 
-	blockTextureArray = Texture({ "dirt.png", "stone.png", "bedrock.png" }, false);
+	blockTextureArray = Texture({ "dirt.png", "grass_top.png", "grass_side.png", "stone.png", "bedrock.png", "sand.png"}, false);
 
 	return true;
 }
 
 void WorldManager::update() {
 	glm::vec3 pos = camera->getCameraPos();
-	lightPos = { pos.x - 1000 ,3000 , pos.z };
+	lightPos = { (sin(glfwGetTime()) * 1000) + pos.x, 500, (cos(glfwGetTime()) * 1000) + pos.z };
 
 	if (updatedRenderChunks) {
 		updateRenderBuffers();
 	}
 
 	float now = (float)glfwGetTime();
-	if (now - lastFrustumCheck >= 0.02) {
+	if (now - lastFrustumCheck >= 0.01) {
 		lastFrustumCheck = now;
 		std::vector<std::pair<int, int>> renderChunks = camera->getVisibleChunks(renderRadius);
 		renderer.updateRenderChunks(renderChunks);
@@ -70,11 +71,6 @@ void WorldManager::updateRenderChunks(int originX, int originZ, int renderRadius
 		unloadChunks(loadVector);
 	}
 
-	std::cout << "World: " << worldMap.size() << "\n";
-	std::cout << "Vertices: " << verticesByChunk.size() << "\n";
-	std::cout << "Indices: " << indicesByChunk.size() << "\n";
-	std::cout << "Prepared: " << preparedChunks.size() << "\n";
-
 	loadFuture = std::async(std::launch::async, [this, loadVector] {
 		this->loadChunksAsync(loadVector);
 		});
@@ -83,16 +79,21 @@ void WorldManager::updateRenderChunks(int originX, int originZ, int renderRadius
 void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadChunks) {
 	for (const auto& key : loadChunks) {
 		if (stopAsync) break;
-		auto result = worldMap.emplace(key, Chunk());
-		if (result.second) { // Chunk was newly inserted
-			auto& newChunk = result.first->second;
-			newChunk.setChunkCoords(key.first, key.second);
-			newChunk.generateChunk();
-			newChunk.setWorldReference(this);
-			genMeshForSingleChunk(key);
-		}
-		else {
-			genMeshForSingleChunk(key);
+		{
+			std::unique_lock<std::mutex> lk(chunkUpdateMtx);
+			chunkCondition.wait(lk, [this] { return !chunkUpdate.load();  });
+
+			auto result = worldMap.emplace(key, Chunk());
+			if (result.second) { // Chunk was newly inserted
+				auto& newChunk = result.first->second;
+				newChunk.setChunkCoords(key.first, key.second);
+				newChunk.generateChunk();
+				newChunk.setWorldReference(this);
+				genMeshForSingleChunk(key);
+			}
+			else {
+				genMeshForSingleChunk(key);
+			}
 		}
 	}
 }
@@ -150,7 +151,8 @@ void WorldManager::cleanup() {
 	renderer.cleanup();
 }
 
-int WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ) {
+int WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, bool fromSelf) {
+	std::lock_guard<std::mutex> guard(mtx);
 	int chunkX = (worldX >> 4);
 	int chunkZ = (worldZ >> 4);
 	std::pair<int, int> key = { chunkX, chunkZ };
@@ -159,12 +161,65 @@ int WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ) {
 		return it->second.getBlockAt(worldX, worldY, worldZ);
 	}
 	else {
-		worldMap.emplace(key, Chunk());
-		worldMap[key].setChunkCoords(key.first, key.second);
-		worldMap[key].generateChunk();
-		worldMap[key].setWorldReference(this);
-		return static_cast<int>(worldMap[key].getBlockAt(worldX, worldY, worldZ));
+		if (fromSelf) {
+			worldMap.emplace(key, Chunk());
+			worldMap[key].setChunkCoords(key.first, key.second);
+			worldMap[key].generateChunk();
+			worldMap[key].setWorldReference(this);
+			return static_cast<int>(worldMap[key].getBlockAt(worldX, worldY, worldZ));
+		}
 	}
+
+	return 69;
+}
+
+void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
+	int chunkX = (worldX >> 4);
+	int chunkZ = (worldZ >> 4);
+	std::pair<int, int> key = { chunkX, chunkZ };
+	{
+		std::lock_guard<std::mutex> lk(chunkUpdateMtx);
+		chunkUpdate.store(true);
+		auto it = worldMap.find(key);
+		if (it != worldMap.end()) {
+			worldMap[key].breakBlock(((worldX % 16) + 16) % 16, worldY, ((worldZ % 16) + 16) % 16);
+			updateMesh(key);
+			if ((((worldX % 16) + 16) % 16) == 0) {
+				updateMesh({ key.first - 1, key.second });
+			}
+			if ((((worldX % 16) + 16) % 16) == 15) {
+				updateMesh({ key.first + 1, key.second });
+			}
+			if ((((worldZ % 16) + 16) % 16) == 0) {
+				updateMesh({ key.first, key.second - 1 });
+			}
+			if ((((worldZ % 16) + 16) % 16) == 15) {
+				updateMesh({ key.first, key.second + 1 });
+			}
+		}
+	}
+	chunkCondition.notify_one();
+
+}
+
+void WorldManager::updateMesh(ChunkCoordPair key) {
+	worldMap[key].setWholeChunkMeshes();
+	verticesByChunk.erase(key);
+	indicesByChunk.erase(key);
+	for (int i = 0; i < 6; i++) {
+		auto pairVec = worldMap[key].getGreedyMeshByFaceType(i);
+		for (const auto& meshData : pairVec) {
+			for (const auto& quad : meshData.first) {
+				addQuadVerticesAndIndices(quad, key, i, meshData.second);
+			}
+		}
+	}
+
+	worldMap[key].unload();
+
+	markChunkReadyForRender(key);
+
+	chunkUpdate.store(false);
 }
 
 void WorldManager::addQuadVerticesAndIndices(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>> quad, ChunkCoordPair chunkCoords, int faceType, int offset) {

@@ -21,8 +21,8 @@ bool Renderer::initialize() {
 
     setupVertexAttributes();
 
-    //glfwWindowHint(GLFW_SAMPLES, 16);
-    //glEnable(GL_MULTISAMPLE);
+    glfwWindowHint(GLFW_SAMPLES, 16);
+    glEnable(GL_MULTISAMPLE);
 
     return true;
 }
@@ -98,11 +98,11 @@ void Renderer::updateIndexBuffer(const std::vector<unsigned int>& indices, std::
 
 void Renderer::eraseBuffers(const std::pair<int, int>& eraseKey) {
     if (chunkToVertexBuffer.find(eraseKey) != chunkToVertexBuffer.end()) {
-        chunkToVertexBuffer[eraseKey].destroy(); // Free resources
+        chunkToVertexBuffer[eraseKey].destroy();
         chunkToVertexBuffer.erase(eraseKey);
     }
     if (chunkToIndexBuffer.find(eraseKey) != chunkToIndexBuffer.end()) {
-        chunkToIndexBuffer[eraseKey].destroy(); // Free resources
+        chunkToIndexBuffer[eraseKey].destroy();
         chunkToIndexBuffer.erase(eraseKey);
     }
 }

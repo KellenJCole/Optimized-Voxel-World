@@ -66,7 +66,23 @@ void GreedyAlgorithm::firstPassOn(BlockFace f) {
 				}
 
 				// Correct the mesh addition with the right variable names
-				meshesForThisFace.push_back({ blockType, {{startSecond, endSecond}, {startFirst, endFirst}} });
+				unsigned char grassAssignChar;
+				if (blockType == 2) {
+					switch (f) {
+					case NEG_X: 
+					case POS_X: grassAssignChar = 3; break;
+					case NEG_Y: grassAssignChar = 1; break;
+					case POS_Y: grassAssignChar = 2; break;
+					case NEG_Z: 
+					case POS_Z: grassAssignChar = 3; break;
+					}
+
+					meshesForThisFace.push_back({ grassAssignChar, {{startSecond, endSecond}, {startFirst, endFirst}} });
+				}
+				else {
+					blockType = blockType > 2 ? blockType + 1 : blockType;
+					meshesForThisFace.push_back({ blockType, {{startSecond, endSecond}, {startFirst, endFirst}} });
+				}
 			}
 		}
 

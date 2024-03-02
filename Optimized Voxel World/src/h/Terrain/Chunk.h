@@ -32,11 +32,13 @@ public:
 	void setWholeChunkMeshes();
 	std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> getGreedyMeshByFaceType(int faceType);
 	int getBlockAt(int worldX, int worldY, int worldZ);
+	void breakBlock(int localX, int localY, int localZ);
 	~Chunk();
 private:
 	int convert3DCoordinatesToFlatIndex(int x, int y, int z);
 	glm::ivec3 convertFlatIndexTo3DCoordinates(int flatIndex);
 	void greedyMesh();
+	unsigned int getBiome();
 
 	unsigned char checkNeighbors(int blockIndex); // Returns a bitmask representing which faces are visible and which are not
 
@@ -45,7 +47,6 @@ private:
 	std::map<BlockFace, std::vector<unsigned int>> visByFaceType; // keep before greedy meshing
 	int chunkX, chunkZ;
 	WorldManager* world;
-	FastNoise noise;
 	bool hasBeenGenerated;
 	BlockFace iFaces[6];
 };

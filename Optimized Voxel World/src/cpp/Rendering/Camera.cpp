@@ -14,9 +14,10 @@ Camera::Camera(float inputSensitivity)
 	firstMouse(true),
 	sensitivity(inputSensitivity)
 {
-	projection = glm::perspective(glm::radians(90.f), 1600.0f / 900.0f, 0.1f, 5000.0f);
+	projection = glm::perspective(glm::radians(90.f), 1600.0f / 900.0f, 0.1f, 20000.0f);
 	view = glm::mat4(1.0f);
-	updateCameraVectors(); // Ensure initial direction vectors are correct
+	updateCameraVectors(); 
+	mode = false; // gravity on 
 
 }
 
@@ -25,37 +26,68 @@ void Camera::update()
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
 
+void Camera::setMode(bool fly) {
+	mode = fly;
+}
+
 #include <iostream>
 void Camera::processKeyboardInput(int key, float deltaTime)
 {
-	const float camSpeed = 200.f * deltaTime;
-	glm::vec3 moveDir;
-	float originalY = cameraPos.y;
+	float camSpeed;
+	if (mode) {
+		camSpeed = 200.f * deltaTime;
+		glm::vec3 moveDir;
+		float originalY = cameraPos.y;
 
-	switch (key) {
-	case GLFW_KEY_W: //w
-		moveDir = glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
-		break;
-	case GLFW_KEY_S: //s
-		moveDir = -glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
-		break;
-	case GLFW_KEY_A: //a
-		moveDir = -glm::normalize(glm::cross(cameraFront, cameraUp));
-		break;
-	case GLFW_KEY_D: //d
-		moveDir = glm::normalize(glm::cross(cameraFront, cameraUp));
-		break;
-	case GLFW_KEY_LEFT_SHIFT: // left shift
-		cameraPos.y -= camSpeed * .5;
-		cameraPos.y = std::max(0.0f, cameraPos.y);
-		return;
-	case GLFW_KEY_SPACE: // space
-		cameraPos.y += camSpeed * .5;
-		cameraPos.y = std::min(300.0f, cameraPos.y);
-		return;
+		switch (key) {
+		case GLFW_KEY_W: //w
+			moveDir = glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
+			break;
+		case GLFW_KEY_S: //s
+			moveDir = -glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
+			break;
+		case GLFW_KEY_A: //a
+			moveDir = -glm::normalize(glm::cross(cameraFront, cameraUp));
+			break;
+		case GLFW_KEY_D: //d
+			moveDir = glm::normalize(glm::cross(cameraFront, cameraUp));
+			break;
+		case GLFW_KEY_LEFT_SHIFT: // left shift
+			cameraPos.y -= camSpeed * .5;
+			return;
+		case GLFW_KEY_SPACE: // space
+			cameraPos.y += camSpeed * .5;
+			return;
+		}
+
+		cameraPos += moveDir * camSpeed;
 	}
+	else {
+		camSpeed = 8.f * deltaTime;
+		glm::vec3 moveDir;
+		float originalY = cameraPos.y;
 
-	cameraPos += moveDir * camSpeed;
+		switch (key) {
+		case GLFW_KEY_W: //w
+			moveDir = glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
+			cameraPos += moveDir * camSpeed;
+			return;
+		case GLFW_KEY_S: //s
+			moveDir = -glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
+			cameraPos += moveDir * camSpeed;
+			return;
+		case GLFW_KEY_A: //a
+			moveDir = -glm::normalize(glm::cross(cameraFront, cameraUp));
+			cameraPos += moveDir * camSpeed;
+			return;
+		case GLFW_KEY_D: //d
+			moveDir = glm::normalize(glm::cross(cameraFront, cameraUp));
+			cameraPos += moveDir * camSpeed;
+			return;
+		default:
+			return;
+		}
+	}
 }
 
 void Camera::processMouseMovement(double xPos, double yPos)
@@ -153,4 +185,8 @@ bool Camera::isChunkVisible(const std::pair<int, int>& chunkCoord, const std::ar
 
 
 	return true;
+}
+
+void Camera::setCameraPos(glm::vec3 pos) {
+	cameraPos = pos;
 }

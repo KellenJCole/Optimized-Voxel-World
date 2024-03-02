@@ -26,7 +26,7 @@ Shader::Shader(const char* filepath) {
 
 	ShaderType type = ShaderType::NONE;
 	while (getline(stream, line)) {
-		if (line.find("#shader") != std::string::npos) { // does line contain #shader?
+		if (line.find("#shader") != std::string::npos) {
 			if (line.find("vertex") != std::string::npos) {
 				type = ShaderType::VERTEX;
 			}

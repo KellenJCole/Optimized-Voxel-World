@@ -17,6 +17,10 @@ public:
 	void processKeyboardInput(int key, float deltaTime);
 	void processMouseMovement(double xPos, double yPos);
 
+	void setCameraPos(glm::vec3 pos);
+
+	void setMode(bool fly);
+
 	// Getters for camera properties
 	glm::vec3 getCameraPos() const { return cameraPos; }
 	glm::vec3 getCameraFront() const { return cameraFront; }
@@ -42,6 +46,7 @@ private:
 	float pitch;
 	float lastX, lastY;
 	bool firstMouse;
+	bool mode;
 
 	// Internal helper function
 	void updateCameraVectors();

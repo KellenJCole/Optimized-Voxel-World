@@ -105,7 +105,7 @@
     <ClCompile Include="src\cpp\Terrain\GreedyAlgorithm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\Terrain\ChunkQuadTree.cpp">
+    <ClCompile Include="src\cpp\Player\Player.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -161,7 +161,7 @@
     <ClInclude Include="src\h\Terrain\GreedyAlgorithm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Terrain\ChunkQuadTree.h">
+    <ClInclude Include="src\h\Player\Player.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -176,6 +176,12 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="src\res\textures\stone.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="src\res\textures\grass_side.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="src\res\textures\grass_top.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

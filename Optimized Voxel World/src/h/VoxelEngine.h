@@ -5,6 +5,7 @@
 #include "h/Terrain/WorldManager.h"
 #include "h/Rendering/Shader.h"
 #include "h/Rendering/Camera.h"
+#include "h/Player/Player.h"
 
 class VoxelEngine {
 public: 
@@ -28,6 +29,9 @@ private:
 	WorldManager worldManager;
 	Shader shader;
 	Camera camera;
+
+	Player player;
+
 	float deltaTime;
 	float lastFrame;
 

@@ -28,12 +28,14 @@ public:
 	void render();
 	void cleanup();
 	void setCamAndShaderPointers(Shader* sha, Camera* cam);
-	int getBlockAtGlobal(int worldX, int worldY, int worldZ);
+	int getBlockAtGlobal(int worldX, int worldY, int worldZ, bool fromSelf);
 	void switchRenderMethod();
+	void breakBlock(int worldX, int worldY, int worldZ);
 private:
 	void addQuadVerticesAndIndices(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>> quad, ChunkCoordPair chunkCoords, int faceType, int offset);
 	void genMeshForSingleChunk(ChunkCoordPair key);
 	void markChunkReadyForRender(std::pair<int, int> key);
+	void updateMesh(ChunkCoordPair key);
 
 	void loadChunksAsync(const std::vector<std::pair<int, int>>& loadChunks);
 	void unloadChunks(const std::vector<std::pair<int, int>>& loadChunks);
@@ -61,9 +63,12 @@ private:
 	// MULTITHREAD
 	std::future<void> loadFuture;
 	std::mutex mtx;
+	std::mutex chunkUpdateMtx;
+	std::condition_variable chunkCondition;
 
 	float lastFrustumCheck;
 	std::atomic<bool> updatedRenderChunks;
+	std::atomic<bool> chunkUpdate;
 	int renderRadius;
 	std::atomic<bool> stopAsync;
 

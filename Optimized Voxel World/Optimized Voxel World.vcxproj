@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\cpp\main.cpp" />
+    <ClCompile Include="src\cpp\Player\Player.cpp" />
     <ClCompile Include="src\cpp\Rendering\BlockGeometry.cpp" />
     <ClCompile Include="src\cpp\Rendering\Camera.cpp" />
     <ClCompile Include="src\cpp\Rendering\GLErrorCatcher.cpp" />
@@ -31,7 +32,6 @@
     <ClCompile Include="src\cpp\Rendering\VertexBuffer.cpp" />
     <ClCompile Include="src\cpp\Terrain\Chunk.cpp" />
     <ClCompile Include="src\cpp\Terrain\ChunkLoader.cpp" />
-    <ClCompile Include="src\cpp\Terrain\ChunkQuadTree.cpp" />
     <ClCompile Include="src\cpp\Terrain\GreedyAlgorithm.cpp" />
     <ClCompile Include="src\cpp\Terrain\WorldManager.cpp" />
     <ClCompile Include="src\cpp\VoxelEngine.cpp" />
@@ -39,6 +39,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\h\FastNoise-master\FastNoise.h" />
+    <ClInclude Include="src\h\Player\Player.h" />
     <ClInclude Include="src\h\Rendering\BlockGeometry.h" />
     <ClInclude Include="src\h\Rendering\Camera.h" />
     <ClInclude Include="src\h\Rendering\GLErrorCatcher.h" />
@@ -52,7 +53,6 @@
     <ClInclude Include="src\h\stb_image\stb_image.h" />
     <ClInclude Include="src\h\Terrain\Chunk.h" />
     <ClInclude Include="src\h\Terrain\ChunkLoader.h" />
-    <ClInclude Include="src\h\Terrain\ChunkQuadTree.h" />
     <ClInclude Include="src\h\Terrain\GreedyAlgorithm.h" />
     <ClInclude Include="src\h\Terrain\WorldManager.h" />
     <ClInclude Include="src\h\VoxelEngine.h" />
@@ -63,6 +63,8 @@
   <ItemGroup>
     <Image Include="src\res\textures\bedrock.png" />
     <Image Include="src\res\textures\dirt.png" />
+    <Image Include="src\res\textures\grass_side.png" />
+    <Image Include="src\res\textures\grass_top.png" />
     <Image Include="src\res\textures\stone.png" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
