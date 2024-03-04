@@ -16,6 +16,7 @@ GLFW: https://www.glfw.org - for creating a window and handling user input
 GLM: https://github.com/g-truc/glm - for OpenGL maths  
 stb_image: https://github.com/nothings/stb/blob/master/stb_image.h - for loading images into textures  
 FastNoise: https://github.com/charlesangus/FastNoise - for generating procedural terrain  
+FreeType: https://freetype.org - for converting true type fonts to glyph textures  
   
 Resources used:  
 LearnOpenGL: https://learnopengl.com  
