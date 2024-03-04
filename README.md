@@ -21,4 +21,10 @@ FreeType: https://freetype.org - for converting true type fonts to glyph texture
 Resources used:  
 LearnOpenGL: https://learnopengl.com  
 The Cherno's OpenGL YouTube series: https://www.youtube.com/watch?v=W3gAzLwfIP0&list=PLlrATfBNZ98foTJPJ_Ev03o2oq3-GGOS2  
-0fps' "Meshing in a Minecraft Game" https://0fps.net/2012/06/30/meshing-in-a-minecraft-game/
+0fps' "Meshing in a Minecraft Game" https://0fps.net/2012/06/30/meshing-in-a-minecraft-game/  
+![image](https://github.com/KellenJCole/Optimized-Voxel-World/assets/34790396/3d11db5f-4ab3-4c26-aadd-1a1ac6bd4553)  
+![image](https://github.com/KellenJCole/Optimized-Voxel-World/assets/34790396/9e892363-af67-4ca8-8884-9b40fef71ec6)  
+![image](https://github.com/KellenJCole/Optimized-Voxel-World/assets/34790396/c296b1ef-4d92-4ea7-bc3d-6f40f8fc1dbb)
+
+
+
