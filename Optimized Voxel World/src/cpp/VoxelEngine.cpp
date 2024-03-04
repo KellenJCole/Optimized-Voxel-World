@@ -2,10 +2,14 @@
 #include <iostream>
 #include "h/Rendering/Shader.h"
 #include "h/Rendering/GLErrorCatcher.h"
+#include <string>
+#include <sstream>
+#include <iomanip>
 
 VoxelEngine::VoxelEngine() :
     deltaTime(0.0f),
-    lastFrame(0.0f) {
+    lastFrame(0.0f),
+    fps(0) {
 
     currChunkX = camera.getCameraPos().x / 16;
     currChunkZ = camera.getCameraPos().z / 16;
@@ -44,6 +48,8 @@ bool VoxelEngine::initialize() {
 
     glfwSetCursorPosCallback(window, cursor_position_callback);
 
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     if (glewInit() != GLEW_OK) {
         std::cout << "glewInit() != GLEW_OK\n";
@@ -55,13 +61,23 @@ bool VoxelEngine::initialize() {
     if (!worldManager.initialize()) {
         std::cout << "World Manager initialization failure\n";
     }
-    shader = Shader("src/res/shaders/Block.shader");
+    blockShader = Shader("src/res/shaders/Block.shader");
+    debugShader = Shader("src/res/shaders/Debug.shader");
+
+    debugShader.use();
+    glm::mat4 projection = glm::ortho(0.0f, 1600.f, 0.0f, 900.f);
+    debugShader.setUniform4fv("projection", projection);
+
     camera = Camera(0.2); // 0.2 is our camera's sensitivity.
     swapRenderMethodCooldown = 0.0f;
 
-    worldManager.setCamAndShaderPointers(&shader, &camera);
+    worldManager.setCamAndShaderPointers(&blockShader, &camera);
     player.setCamera(&camera);
     player.setWorld(&worldManager);
+
+    if (!debugUI.initialize()) {
+        std::cout << "DebugUI failed initialization\n";
+    }
 
     std::cout << "VoxelEngine.initialize() successful\n";
 
@@ -72,7 +88,6 @@ void VoxelEngine::run() {
     std::cout << "Entering Voxel Engine loop. ProcessInputs->Update->Render\n";
     worldManager.updateRenderChunks(0, 0, renderRadius);
 
-    // TEMP CODE
     double timeAtLastFPSCheck = glfwGetTime();
     int numberOfFrames = 0;
     while (!glfwWindowShouldClose(window)) {
@@ -81,10 +96,10 @@ void VoxelEngine::run() {
         lastFrame = currentTime;
 
         numberOfFrames++;
-        if (currentTime - timeAtLastFPSCheck >= 1.0) {
-            std::cout << numberOfFrames << " FPS\n";
+        if (currentTime - timeAtLastFPSCheck >= 0.5) {
+            fps = numberOfFrames;
             numberOfFrames = 0;
-            timeAtLastFPSCheck += 1.0;
+            timeAtLastFPSCheck += 0.5;
         }
 
         processInput();
@@ -163,13 +178,21 @@ void VoxelEngine::render() {
     
     glm::vec3 viewPos = camera.getCameraPos();
     camera.update();
-    shader.use();
+    blockShader.use();
 
-    shader.setUniform4fv("view", (glm::mat4&)camera.getView());
-    shader.setUniform4fv("projection", (glm::mat4&)camera.getProjection());
+    blockShader.setUniform4fv("view", (glm::mat4&)camera.getView());
+    blockShader.setUniform4fv("projection", (glm::mat4&)camera.getProjection());
     // Render stuff below here
     worldManager.render();
 
+    glm::vec3 cameraPos = camera.getCameraPos();
+    std::ostringstream stream;
+    stream << std::fixed << std::setprecision(3);
+    stream << fps * 2 << " fps\n"
+        << "World Coordinates: " << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z;
+
+    debugUI.renderText(debugShader, stream.str(), 10.0f, 870.0f, 0.8f, glm::vec3(0.0f, 0.5f, 0.5f));
+    
     glfwSwapBuffers(window);
 
     glfwPollEvents();

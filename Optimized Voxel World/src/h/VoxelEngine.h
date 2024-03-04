@@ -6,6 +6,7 @@
 #include "h/Rendering/Shader.h"
 #include "h/Rendering/Camera.h"
 #include "h/Player/Player.h"
+#include "h/Rendering/UI/DebugUI.h"
 
 class VoxelEngine {
 public: 
@@ -27,8 +28,9 @@ private:
 
 	GLFWwindow* window;
 	WorldManager worldManager;
-	Shader shader;
+	Shader blockShader, debugShader;
 	Camera camera;
+	DebugUI debugUI;
 
 	Player player;
 
@@ -37,6 +39,7 @@ private:
 
 	int currChunkX, currChunkZ;
 	int lastChunkX, lastChunkZ;
+	int fps;
 
 	int renderRadius;
 

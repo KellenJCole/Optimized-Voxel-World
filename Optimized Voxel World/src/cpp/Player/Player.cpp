@@ -1,7 +1,7 @@
 #include "h/Player/Player.h"
 
 Player::Player() :
-	gravitationalAcceleration(100),
+	gravitationalAcceleration(70),
 	gravitationalVelocity(0),
 	gravityOn(true),
 	currentGravitationalCollision(false),

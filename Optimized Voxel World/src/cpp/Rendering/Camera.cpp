@@ -63,7 +63,7 @@ void Camera::processKeyboardInput(int key, float deltaTime)
 		cameraPos += moveDir * camSpeed;
 	}
 	else {
-		camSpeed = 8.f * deltaTime;
+		camSpeed = 4.5f * deltaTime;
 		glm::vec3 moveDir;
 		float originalY = cameraPos.y;
 
