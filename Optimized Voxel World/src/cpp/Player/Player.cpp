@@ -1,5 +1,4 @@
 #include "h/Player/Player.h"
-#include <queue>
 
 Player::Player() :
 	gravitationalAcceleration(70),
@@ -166,7 +165,7 @@ int signum(float x) { // Returns 1 if input is above 0, 0 if the number is 0, an
 void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float deltaTime) {
 	if (keyStates[GLFW_MOUSE_BUTTON_LEFT]) {
 		float now = glfwGetTime();
-		if (now - breakBlockDelay > 0.01) {
+		if (now - breakBlockDelay > 0.001) {
 			breakBlockDelay = now;
 			raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
 		}
@@ -275,14 +274,14 @@ void Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius) {
 	radius /= sqrt(dx * dx + dy * dy + dz * dz);
 
 	while (stepY > 0 ? y < 255 : y >= 0) {
-
-		if (!(y < 255 && y >= 0))
+		if (y < 255 && y >= 0) {
 			if (world->getBlockAtGlobal(x, y, z, false) != 0 && world->getBlockAtGlobal(x, y, z, false) != 69) {
 				if (y != 0) {
 					world->breakBlock(x, y, z);
 				}
 				break;
 			}
+		}
 
 		// tMaxX stores the t-value at which we cross a cube boundary along the
 		// X axis, and similarly for Y and Z. Therefore, choosing the least tMax

@@ -178,8 +178,8 @@ void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
 	int chunkZ = (worldZ >> 4);
 	std::pair<int, int> key = { chunkX, chunkZ };
 	{
-		std::lock_guard<std::mutex> lk(chunkUpdateMtx);
 		chunkUpdate.store(true);
+		std::lock_guard<std::mutex> lk(chunkUpdateMtx);
 		auto it = worldMap.find(key);
 		if (it != worldMap.end()) {
 			worldMap[key].breakBlock(((worldX % 16) + 16) % 16, worldY, ((worldZ % 16) + 16) % 16);
