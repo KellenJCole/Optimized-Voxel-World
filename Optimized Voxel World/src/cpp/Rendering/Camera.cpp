@@ -1,9 +1,7 @@
 #include "h/Rendering/Camera.h"
 #include <GLFW/glfw3.h>
 
-Camera::Camera() {
-
-}
+Camera::Camera() {}
 
 Camera::Camera(float inputSensitivity)
 	: cameraPos(0.0f, 250.0f, 0.0f),
@@ -30,8 +28,7 @@ void Camera::setMode(bool fly) {
 	mode = fly;
 }
 
-#include <iostream>
-void Camera::processKeyboardInput(int key, float deltaTime)
+void Camera::processKeyboardInput(std::map<unsigned int, bool> keyStates, float deltaTime)
 {
 	float camSpeed;
 	if (mode) {
@@ -39,54 +36,28 @@ void Camera::processKeyboardInput(int key, float deltaTime)
 		glm::vec3 moveDir;
 		float originalY = cameraPos.y;
 
-		switch (key) {
-		case GLFW_KEY_W: //w
+		if (keyStates[GLFW_KEY_W])
 			moveDir = glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
-			break;
-		case GLFW_KEY_S: //s
+
+		if (keyStates[GLFW_KEY_S])
 			moveDir = -glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
-			break;
-		case GLFW_KEY_A: //a
+
+		if(keyStates[GLFW_KEY_A])
 			moveDir = -glm::normalize(glm::cross(cameraFront, cameraUp));
-			break;
-		case GLFW_KEY_D: //d
+
+		if (keyStates[GLFW_KEY_D])
 			moveDir = glm::normalize(glm::cross(cameraFront, cameraUp));
-			break;
-		case GLFW_KEY_LEFT_SHIFT: // left shift
+
+		if (keyStates[GLFW_KEY_LEFT_SHIFT]) {
 			cameraPos.y -= camSpeed * .5;
 			return;
-		case GLFW_KEY_SPACE: // space
+		}
+		if (keyStates[GLFW_KEY_SPACE]) {
 			cameraPos.y += camSpeed * .5;
 			return;
 		}
 
 		cameraPos += moveDir * camSpeed;
-	}
-	else {
-		camSpeed = 4.5f * deltaTime;
-		glm::vec3 moveDir;
-		float originalY = cameraPos.y;
-
-		switch (key) {
-		case GLFW_KEY_W: //w
-			moveDir = glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
-			cameraPos += moveDir * camSpeed;
-			return;
-		case GLFW_KEY_S: //s
-			moveDir = -glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
-			cameraPos += moveDir * camSpeed;
-			return;
-		case GLFW_KEY_A: //a
-			moveDir = -glm::normalize(glm::cross(cameraFront, cameraUp));
-			cameraPos += moveDir * camSpeed;
-			return;
-		case GLFW_KEY_D: //d
-			moveDir = glm::normalize(glm::cross(cameraFront, cameraUp));
-			cameraPos += moveDir * camSpeed;
-			return;
-		default:
-			return;
-		}
 	}
 }
 

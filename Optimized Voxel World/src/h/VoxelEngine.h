@@ -40,6 +40,9 @@ private:
 	int currChunkX, currChunkZ;
 	int lastChunkX, lastChunkZ;
 	int fps;
+	bool renderDebug;
+	std::map<GLuint, bool> keyStates;
+	std::map<GLuint, bool> playerKeyStates;
 
 	int renderRadius;
 

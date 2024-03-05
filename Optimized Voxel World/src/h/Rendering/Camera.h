@@ -4,6 +4,7 @@
 #include "h/glm/gtc/matrix_transform.hpp"
 #include <array>
 #include <vector>
+#include <map>
 
 class Camera {
 public:
@@ -14,7 +15,7 @@ public:
 	void update();
 
 	// Process user input
-	void processKeyboardInput(int key, float deltaTime);
+	void processKeyboardInput(std::map<unsigned int, bool> keyStates, float deltaTime);
 	void processMouseMovement(double xPos, double yPos);
 
 	void setCameraPos(glm::vec3 pos);
