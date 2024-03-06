@@ -2,7 +2,7 @@ A simple Minecraft clone featuring
 -Procedural generation  
 -Player collisions and physics  
 -Greedy meshing  
--Block breaking  
+-Block placing/breaking  
 -Infinite terrain  
 -Basic lighting  
 -View frustum culling   
