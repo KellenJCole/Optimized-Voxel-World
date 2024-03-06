@@ -6,7 +6,7 @@ DebugUI::DebugUI() {
 
 }
 
-// Initialize() from https://learnopengl.com/In-Practice/Text-Rendering
+// Class from https://learnopengl.com/In-Practice/Text-Rendering
 
 bool DebugUI::initialize() {
     FT_Library ft;

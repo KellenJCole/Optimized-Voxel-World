@@ -1,5 +1,4 @@
 #include "h/Rendering/Renderer.h"
-#include "h/Rendering/VertexBufferLayout.h"
 #include "h/Rendering/GLErrorCatcher.h"
 
 Renderer::Renderer() {
@@ -52,11 +51,8 @@ void Renderer::render() {
             chunkToIndexBuffer[coords].Bind();
             vertexArray.AddBuffer(chunkToVertexBuffer[coords], layout);
             GLCall(glDrawElements(GL_TRIANGLES, chunkToIndexBuffer[coords].GetCount(), GL_UNSIGNED_INT, nullptr));
-            chunkToVertexBuffer[coords].Unbind();
-            chunkToIndexBuffer[coords].Unbind();
         }
     }
-    vertexArray.Unbind();
 }
 
 void Renderer::updateRenderChunks(std::vector<std::pair<int, int>>& renderChunks) {

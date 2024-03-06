@@ -31,6 +31,7 @@ bool VoxelEngine::initialize() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     window = glfwCreateWindow(1600, 900, "Voxel Engine", NULL, NULL);
+    glfwSetWindowPos(window, 160, 90);
     if (!window)
     {
         glfwTerminate();
@@ -64,10 +65,14 @@ bool VoxelEngine::initialize() {
     }
     blockShader = Shader("src/res/shaders/Block.shader");
     debugShader = Shader("src/res/shaders/Debug.shader");
+    userInterfaceShader = Shader("src/res/shaders/UserInterface.shader");
 
     debugShader.use();
     glm::mat4 projection = glm::ortho(0.0f, 1600.f, 0.0f, 900.f);
     debugShader.setUniform4fv("projection", projection);
+
+    userInterfaceShader.use();
+    userInterfaceShader.setUniform4fv("projection", projection);
 
     camera = Camera(0.2); // 0.2 is our camera's sensitivity.
     swapRenderMethodCooldown = 0.0f;
@@ -90,6 +95,8 @@ bool VoxelEngine::initialize() {
     keyStates[GLFW_KEY_UP] = false; // Increase render distance
     keyStates[GLFW_KEY_DOWN] = false; // Decrease render distance
 
+    lastKeyStates = keyStates;
+
     playerKeyStates[GLFW_KEY_W] = false;
     playerKeyStates[GLFW_KEY_A] = false;
     playerKeyStates[GLFW_KEY_S] = false;
@@ -98,6 +105,7 @@ bool VoxelEngine::initialize() {
     playerKeyStates[GLFW_KEY_LEFT_SHIFT] = false;
     playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] = false;
 
+    userInterface.initialize();
 
     return true;
 }
@@ -130,61 +138,40 @@ void VoxelEngine::run() {
 void VoxelEngine::processInput() {
     float currFrame = glfwGetTime();
 
-    playerKeyStates[GLFW_KEY_W] =           (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)          ? true : false;
-    playerKeyStates[GLFW_KEY_A] =           (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)          ? true : false;
-    playerKeyStates[GLFW_KEY_S] =           (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)          ? true : false;
-    playerKeyStates[GLFW_KEY_D] =           (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)          ? true : false;
-    playerKeyStates[GLFW_KEY_SPACE] =       (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)      ? true : false;
-    playerKeyStates[GLFW_KEY_LEFT_SHIFT] =  (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ? true : false;
-    playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] =  (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) ? true : false;
+    for (int i = 0; i < 5; i++) {
+        keyStates[engineKeys[i]] = (glfwGetKey(window, engineKeys[i]) == GLFW_PRESS) ? true : false;
+    }
+
+    for (int i = 0; i < 6; i++) {
+        playerKeyStates[playerKeys[i]] = (glfwGetKey(window, playerKeys[i]) == GLFW_PRESS) ? true : false;
+    }
+
+    playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] =   (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) ? true : false;
     
     player.processKeyboardInput(playerKeyStates, deltaTime);
 
-    /* Keys that should be counted as pressed once, no continuous holding */
-
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && !keyStates[GLFW_KEY_F]) {           // F -> Toggle polygon mode between fill and line
-        keyStates[GLFW_KEY_F] = true;
+    if (keyStates[GLFW_KEY_F] && !lastKeyStates[GLFW_KEY_F])                // F -> Toggle polygon line/fill
         worldManager.switchRenderMethod();
-    }
-    else if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE && keyStates[GLFW_KEY_F]) {
-        keyStates[GLFW_KEY_F] = false;
-    }
 
-    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS && !keyStates[GLFW_KEY_G]) {           // G -> Toggle gravity
-        keyStates[GLFW_KEY_G] = true;
+    if (keyStates[GLFW_KEY_G] && !lastKeyStates[GLFW_KEY_G])                // G -> Toggle gravity
         player.toggleGravity();
-    }
-    else if (glfwGetKey(window, GLFW_KEY_G) == GLFW_RELEASE && keyStates[GLFW_KEY_G]) {
-        keyStates[GLFW_KEY_G] = false;
-    }
 
-    if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS && !keyStates[GLFW_KEY_I]) {           // I -> Toggle debug text
-        keyStates[GLFW_KEY_I] = true;
+    if (keyStates[GLFW_KEY_I] && !lastKeyStates[GLFW_KEY_I])                // I -> Toggle debug text
         renderDebug = !renderDebug;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_I) == GLFW_RELEASE && keyStates[GLFW_KEY_I]) {
-        keyStates[GLFW_KEY_I] = false;
-    }
 
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && !keyStates[GLFW_KEY_UP]) {         // Up arrow -> Increase render radius by 1
-        keyStates[GLFW_KEY_UP] = true;
+    if (keyStates[GLFW_KEY_UP] && !lastKeyStates[GLFW_KEY_UP]) {            // Up arrow -> Increase render radius by 1
         renderRadius += 1;
         worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius);
     }
-    else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE && keyStates[GLFW_KEY_UP]) {
-        keyStates[GLFW_KEY_UP] = false;
-    }
 
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS && !keyStates[GLFW_KEY_DOWN]) {     // Down arrow -> Decrease render radius by 1
-        keyStates[GLFW_KEY_DOWN] = true;
+    if (keyStates[GLFW_KEY_DOWN] && !lastKeyStates[GLFW_KEY_DOWN]) {        // Down arrow -> Decrease render radius by 1
         if (renderRadius > 1) {
             renderRadius--;
             worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius);
         }
     }
-    else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE && keyStates[GLFW_KEY_DOWN]) {
-        keyStates[GLFW_KEY_DOWN] = false;
-    }
+
+    lastKeyStates = keyStates;
 }
 
 void VoxelEngine::update() {
@@ -206,6 +193,7 @@ void VoxelEngine::render() {
     GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
     GLCall(glClearColor(0.529f, 0.808f, 0.922f, 1.0f));
     
+
     glm::vec3 viewPos = camera.getCameraPos();
     camera.update();
     blockShader.use();
@@ -225,6 +213,8 @@ void VoxelEngine::render() {
 
         debugUI.renderText(debugShader, stream.str(), 10.0f, 870.0f, 0.8f, glm::vec3(0.0f, 0.5f, 0.5f));
     }
+
+    userInterface.render(userInterfaceShader);
     
     glfwSwapBuffers(window);
 
@@ -240,6 +230,7 @@ void VoxelEngine::cleanup() {
     worldManager.cleanup();
     blockShader.deleteProgram();
     debugShader.deleteProgram();
+    userInterfaceShader.deleteProgram();
     glfwTerminate();
 }
 
@@ -254,3 +245,7 @@ void VoxelEngine::cursor_position_callback(GLFWwindow* window, double xpos, doub
 void VoxelEngine::processMouseInput(double xpos, double ypos) {
     camera.processMouseMovement(xpos, ypos);
 }
+
+const GLuint VoxelEngine::engineKeys[5] = { GLFW_KEY_F, GLFW_KEY_G, GLFW_KEY_I, GLFW_KEY_UP, GLFW_KEY_DOWN };
+
+const GLuint VoxelEngine::playerKeys[6] = { GLFW_KEY_W, GLFW_KEY_A, GLFW_KEY_S, GLFW_KEY_D, GLFW_KEY_SPACE, GLFW_KEY_LEFT_SHIFT };

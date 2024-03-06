@@ -30,7 +30,7 @@ Texture::Texture(std::vector<std::string> imageNames, bool flipVertically) {
     GLCall(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST));
     GLCall(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
 
-    GLCall(glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_SRGB8, width, height, imageNames.size()));
+    GLCall(glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_SRGB8_ALPHA8, width, height, imageNames.size()));
 
     // Upload the first texture
     GLCall(glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, 1, format, GL_UNSIGNED_BYTE, firstImage));

@@ -29,6 +29,7 @@
     <ClCompile Include="src\cpp\Rendering\Shader.cpp" />
     <ClCompile Include="src\cpp\Rendering\Texture.cpp" />
     <ClCompile Include="src\cpp\Rendering\UI\DebugUI.cpp" />
+    <ClCompile Include="src\cpp\Rendering\UI\UserInterface.cpp" />
     <ClCompile Include="src\cpp\Rendering\VertexArray.cpp" />
     <ClCompile Include="src\cpp\Rendering\VertexBuffer.cpp" />
     <ClCompile Include="src\cpp\Terrain\Chunk.cpp" />
@@ -49,6 +50,7 @@
     <ClInclude Include="src\h\Rendering\Shader.h" />
     <ClInclude Include="src\h\Rendering\Texture.h" />
     <ClInclude Include="src\h\Rendering\UI\DebugUI.h" />
+    <ClInclude Include="src\h\Rendering\UI\UserInterface.h" />
     <ClInclude Include="src\h\Rendering\VertexArray.h" />
     <ClInclude Include="src\h\Rendering\VertexBuffer.h" />
     <ClInclude Include="src\h\Rendering\VertexBufferLayout.h" />
@@ -62,13 +64,10 @@
   <ItemGroup>
     <None Include="src\res\shaders\Block.shader" />
     <None Include="src\res\shaders\Debug.shader" />
+    <None Include="src\res\shaders\UserInterface.shader" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="src\res\textures\bedrock.png" />
-    <Image Include="src\res\textures\dirt.png" />
-    <Image Include="src\res\textures\grass_side.png" />
-    <Image Include="src\res\textures\grass_top.png" />
-    <Image Include="src\res\textures\stone.png" />
+    <Image Include="src\res\textures\User Interface\crosshair.png" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

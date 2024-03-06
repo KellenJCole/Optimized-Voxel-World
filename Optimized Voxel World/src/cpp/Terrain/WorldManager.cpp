@@ -20,7 +20,7 @@ bool WorldManager::initialize() {
 		return false;
 	}
 
-	blockTextureArray = Texture({ "dirt.png", "grass_top.png", "grass_side.png", "stone.png", "bedrock.png", "sand.png"}, false);
+	blockTextureArray = Texture({ "blocks/dirt.png", "blocks/grass_top.png", "blocks/grass_side.png", "blocks/stone.png", "blocks/bedrock.png", "blocks/sand.png"}, false);
 
 	return true;
 }
@@ -365,6 +365,8 @@ glm::vec2 WorldManager::calculateTexCoords(std::pair<unsigned char, std::pair<st
 }
 
 void WorldManager::render() {
+
+	blockTextureArray.Bind();
 
 	shader->setUniform4fv("view", (glm::mat4&)camera->getView());
 	shader->setUniform4fv("projection", (glm::mat4&)camera->getProjection());

@@ -165,7 +165,7 @@ int signum(float x) { // Returns 1 if input is above 0, 0 if the number is 0, an
 void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float deltaTime) {
 	if (keyStates[GLFW_MOUSE_BUTTON_LEFT]) {
 		float now = glfwGetTime();
-		if (now - breakBlockDelay > 0.001) {
+		if (now - breakBlockDelay > 0.15) {
 			breakBlockDelay = now;
 			raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
 		}
@@ -221,16 +221,12 @@ int mod(int value, int modulus) { // Fixes negative modulus issue
 	return (value % modulus + modulus) % modulus;
 }
 
+/*
+intbound() from Will, https://gamedev.stackexchange.com/users/4129/will, works well with negative coordinates
+*/
+
 float intbound(float s, float ds) {
-	// Find the smallest positive t such that s+t*ds is an integer.
-	if (ds < 0) {
-		return intbound(-s, -ds);
-	}
-	else {
-		s = mod(s, 1);
-		// problem is now s+t*ds = 1
-		return (1 - s) / ds;
-	}
+	return (ds > 0 ? ceil(s) - s : s - floor(s)) / abs(ds);
 }
 
 /*
@@ -252,9 +248,9 @@ void Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius) {
 	float dz = direction.z;
 
 	// Direction to increment x, y, z when stepping
-	float stepX = signum(dx);
-	float stepY = signum(dy);
-	float stepZ = signum(dz);
+	int stepX = signum(dx);
+	int stepY = signum(dy);
+	int stepZ = signum(dz);
 
 	float tMaxX = intbound(origin.x, dx);
 	float tMaxY = intbound(origin.y, dy);

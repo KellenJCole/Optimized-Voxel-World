@@ -111,6 +111,9 @@
     <ClCompile Include="src\cpp\Rendering\UI\DebugUI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\UI\UserInterface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\h\Rendering\BlockGeometry.h">
@@ -170,25 +173,17 @@
     <ClInclude Include="src\h\Rendering\UI\DebugUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\h\Rendering\UI\UserInterface.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\res\shaders\Block.shader" />
     <None Include="src\res\shaders\Debug.shader" />
+    <None Include="src\res\shaders\UserInterface.shader" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="src\res\textures\bedrock.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="src\res\textures\dirt.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="src\res\textures\stone.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="src\res\textures\grass_side.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="src\res\textures\grass_top.png">
+    <Image Include="src\res\textures\User Interface\crosshair.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

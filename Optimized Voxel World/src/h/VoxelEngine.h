@@ -7,6 +7,7 @@
 #include "h/Rendering/Camera.h"
 #include "h/Player/Player.h"
 #include "h/Rendering/UI/DebugUI.h"
+#include "h/Rendering/UI/UserInterface.h"
 
 class VoxelEngine {
 public: 
@@ -28,9 +29,10 @@ private:
 
 	GLFWwindow* window;
 	WorldManager worldManager;
-	Shader blockShader, debugShader;
+	Shader blockShader, debugShader, userInterfaceShader;
 	Camera camera;
 	DebugUI debugUI;
+	UserInterface userInterface;;
 
 	Player player;
 
@@ -42,7 +44,10 @@ private:
 	int fps;
 	bool renderDebug;
 	std::map<GLuint, bool> keyStates;
+	std::map<GLuint, bool> lastKeyStates;
 	std::map<GLuint, bool> playerKeyStates;
+	static const GLuint engineKeys[5];
+	static const GLuint playerKeys[6];
 
 	int renderRadius;
 
