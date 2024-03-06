@@ -20,7 +20,7 @@ bool WorldManager::initialize() {
 		return false;
 	}
 
-	blockTextureArray = Texture({ "blocks/dirt.png", "blocks/grass_top.png", "blocks/grass_side.png", "blocks/stone.png", "blocks/bedrock.png", "blocks/sand.png"}, false);
+	blockTextureArray = TextureArray({ "blocks/dirt.png", "blocks/grass_top.png", "blocks/grass_side.png", "blocks/stone.png", "blocks/bedrock.png", "blocks/sand.png"}, false);
 
 	return true;
 }
@@ -199,7 +199,34 @@ void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
 		}
 	}
 	chunkCondition.notify_one();
+}
 
+void WorldManager::placeBlock(int worldX, int worldY, int worldZ, unsigned char blockToPlace) {
+	int chunkX = (worldX >> 4);
+	int chunkZ = (worldZ >> 4);
+	std::pair<int, int> key = { chunkX, chunkZ };
+	{
+		chunkUpdate.store(true);
+		std::lock_guard<std::mutex> lk(chunkUpdateMtx);
+		auto it = worldMap.find(key);
+		if (it != worldMap.end()) {
+			worldMap[key].placeBlock(((worldX % 16) + 16) % 16, worldY, ((worldZ % 16) + 16) % 16, blockToPlace);
+			updateMesh(key);
+			if ((((worldX % 16) + 16) % 16) == 0) {
+				updateMesh({ key.first - 1, key.second });
+			}
+			if ((((worldX % 16) + 16) % 16) == 15) {
+				updateMesh({ key.first + 1, key.second });
+			}
+			if ((((worldZ % 16) + 16) % 16) == 0) {
+				updateMesh({ key.first, key.second - 1 });
+			}
+			if ((((worldZ % 16) + 16) % 16) == 15) {
+				updateMesh({ key.first, key.second + 1 });
+			}
+		}
+	}
+	chunkCondition.notify_one();
 }
 
 void WorldManager::updateMesh(ChunkCoordPair key) {

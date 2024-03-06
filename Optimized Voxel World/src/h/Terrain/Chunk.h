@@ -33,6 +33,7 @@ public:
 	std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> getGreedyMeshByFaceType(int faceType);
 	int getBlockAt(int worldX, int worldY, int worldZ);
 	void breakBlock(int localX, int localY, int localZ);
+	void placeBlock(int localX, int localY, int localZ, unsigned char blockToPlace);
 	~Chunk();
 private:
 	int convert3DCoordinatesToFlatIndex(int x, int y, int z);

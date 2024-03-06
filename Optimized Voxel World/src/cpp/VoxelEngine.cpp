@@ -104,8 +104,11 @@ bool VoxelEngine::initialize() {
     playerKeyStates[GLFW_KEY_SPACE] = false;
     playerKeyStates[GLFW_KEY_LEFT_SHIFT] = false;
     playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] = false;
+    playerKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = false;
 
     userInterface.initialize();
+
+    player.initialize();
 
     return true;
 }
@@ -128,6 +131,7 @@ void VoxelEngine::run() {
             timeAtLastFPSCheck += 0.1;
         }
 
+        
         processInput();
         update();
         render();
@@ -147,6 +151,7 @@ void VoxelEngine::processInput() {
     }
 
     playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] =   (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) ? true : false;
+    playerKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) ? true : false;
     
     player.processKeyboardInput(playerKeyStates, deltaTime);
 
@@ -175,8 +180,6 @@ void VoxelEngine::processInput() {
 }
 
 void VoxelEngine::update() {
-    player.update(deltaTime);
-
     currChunkX = camera.getCameraPos().x / 16;
     currChunkZ = camera.getCameraPos().z / 16;
     
@@ -187,6 +190,8 @@ void VoxelEngine::update() {
     }
     lastChunkX = currChunkX;
     lastChunkZ = currChunkZ;
+
+    player.update(deltaTime);
 }
 
 void VoxelEngine::render() {

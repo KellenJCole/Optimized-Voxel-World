@@ -3,14 +3,14 @@
 #include <iostream>
 #include <vector>
 
-class Texture {
+class TextureArray {
 private:
 	unsigned int TextureID;
 public:
-	Texture();
-	Texture(std::vector<std::string> imageNames, bool flipVertically);
+	TextureArray();
+	TextureArray(std::vector<std::string> imageNames, bool flipVertically);
 	void Bind();
-	~Texture();
+	~TextureArray();
 	inline unsigned int getTextureID() const { return TextureID; }
 };
 

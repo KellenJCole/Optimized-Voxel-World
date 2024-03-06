@@ -25,7 +25,7 @@ UserInterface::UserInterface() :
 }
 
 bool UserInterface::initialize() {
-    textureArray = Texture({ "User Interface/crosshair.png" }, false);
+    textureArray = TextureArray({ "User Interface/crosshair.png" }, false);
     GLCall(glGenVertexArrays(1, &va));
     GLCall(glBindVertexArray(va));
 

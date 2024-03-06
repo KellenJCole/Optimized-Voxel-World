@@ -32,7 +32,7 @@ void Camera::processKeyboardInput(std::map<unsigned int, bool> keyStates, float 
 {
 	float camSpeed;
 	if (mode) {
-		camSpeed = 200.f * deltaTime;
+		camSpeed = 25.f * deltaTime;
 		glm::vec3 moveDir;
 		float originalY = cameraPos.y;
 

@@ -1,14 +1,14 @@
-#include "h/Rendering/Texture.h"
+#include "h/Rendering/TextureArray.h"
 #include "h/Rendering/GLErrorCatcher.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <h/stb_image/stb_image.h>
 
 
-Texture::Texture() {
+TextureArray::TextureArray() {
 
 }
 
-Texture::Texture(std::vector<std::string> imageNames, bool flipVertically) {
+TextureArray::TextureArray(std::vector<std::string> imageNames, bool flipVertically) {
     if (flipVertically)
         stbi_set_flip_vertically_on_load(true);
 
@@ -51,10 +51,10 @@ Texture::Texture(std::vector<std::string> imageNames, bool flipVertically) {
     GLCall(glGenerateMipmap(GL_TEXTURE_2D_ARRAY));
 }
 
-void Texture::Bind() {
+void TextureArray::Bind() {
     GLCall(glBindTexture(GL_TEXTURE_2D_ARRAY, getTextureID()));
 }
 
-Texture::~Texture() {
+TextureArray::~TextureArray() {
 
 }

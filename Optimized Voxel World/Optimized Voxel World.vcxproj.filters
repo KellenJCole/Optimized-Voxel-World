@@ -75,7 +75,7 @@
     <ClCompile Include="src\cpp\Rendering\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\Rendering\Texture.cpp">
+    <ClCompile Include="src\cpp\Rendering\TextureArray.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\cpp\Rendering\VertexArray.cpp">
@@ -134,7 +134,7 @@
     <ClInclude Include="src\h\Rendering\Shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Rendering\Texture.h">
+    <ClInclude Include="src\h\Rendering\TextureArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\h\Rendering\VertexArray.h">

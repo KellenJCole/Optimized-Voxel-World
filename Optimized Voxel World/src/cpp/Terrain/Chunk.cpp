@@ -228,6 +228,11 @@ void Chunk::breakBlock(int localX, int localY, int localZ) {
 	chunk[flatIndex] = 0;
 }
 
+void Chunk::placeBlock(int localX, int localY, int localZ, unsigned char blockToPlace) {
+	int flatIndex = convert3DCoordinatesToFlatIndex(localX, localY, localZ);
+	chunk[flatIndex] = blockToPlace;
+}
+
 Chunk::~Chunk() {
 	chunk.clear();
 }

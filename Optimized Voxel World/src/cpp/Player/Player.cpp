@@ -12,6 +12,17 @@ Player::Player() :
 	jumpAcceleration(-15),
 	breakBlockDelay(0)
 {
+	srand(time(NULL));
+}
+
+void Player::initialize() {
+	prevKeyStates[GLFW_KEY_W] = false;
+	prevKeyStates[GLFW_KEY_A] = false;
+	prevKeyStates[GLFW_KEY_S] = false;
+	prevKeyStates[GLFW_KEY_D] = false;
+	prevKeyStates[GLFW_KEY_SPACE] = false;
+	prevKeyStates[GLFW_MOUSE_BUTTON_LEFT] = false;
+	prevKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = false;
 }
 
 void Player::setCamera(Camera* c) {
@@ -29,6 +40,7 @@ void Player::toggleGravity() {
 }
 
 void Player::update(float deltaTime) {
+
 	if (gravityOn) {
 		glm::vec3 currPos = camera->getCameraPos();
 		glm::vec3 origPos = currPos;
@@ -87,9 +99,9 @@ bool Player::checkForGravitationalCollision() {
 	int maxCheckX = floor(cameraPos.x + 0.3);
 	int maxCheckZ = floor(cameraPos.z + 0.3);
 
-	for (minCheckX; minCheckX <= maxCheckX; minCheckX++) {
-		for (minCheckZ; minCheckZ <= maxCheckZ; minCheckZ++) {
-			unsigned char block = world->getBlockAtGlobal(minCheckX, cameraPos.y, minCheckZ, false);
+	for (int x = minCheckX; x <= maxCheckX; x++) {
+		for (int z = minCheckZ; z <= maxCheckZ; z++) {
+			unsigned char block = world->getBlockAtGlobal(x, cameraPos.y, z, false);
 			if (block != 0 && block != 69) {
 				currentGravitationalCollision = true;
 				return true;
@@ -125,7 +137,7 @@ bool Player::checkForHorizontalCollision() {
 
 	// Check for collision on the x-axis
 	for (int x = xMin; x <= xMax; x++) {
-		for (int y = yMin; y < yMax; y++) {
+		for (int y = yMin; y <= yMax; y++) {
 			if (world->getBlockAtGlobal(x, y, std::floor(camPos.z), false) != 0 &&
 				world->getBlockAtGlobal(x, y, std::floor(camPos.z), false) != 69) {
 				return true;
@@ -163,13 +175,39 @@ int signum(float x) { // Returns 1 if input is above 0, 0 if the number is 0, an
 }
 
 void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float deltaTime) {
-	if (keyStates[GLFW_MOUSE_BUTTON_LEFT]) {
-		float now = glfwGetTime();
-		if (now - breakBlockDelay > 0.15) {
+	float now = glfwGetTime();
+	if (keyStates[GLFW_MOUSE_BUTTON_LEFT] && prevKeyStates[GLFW_MOUSE_BUTTON_LEFT]) { // Break block
+		if (now - breakBlockDelay > 0.1) {
 			breakBlockDelay = now;
-			raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
+			auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
+			world->breakBlock(returnVecs.first.x, returnVecs.first.y, returnVecs.first.z);
 		}
 	}
+	else if (keyStates[GLFW_MOUSE_BUTTON_LEFT] && !prevKeyStates[GLFW_MOUSE_BUTTON_LEFT]) {
+		breakBlockDelay = now;
+		auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
+		world->breakBlock(returnVecs.first.x, returnVecs.first.y, returnVecs.first.z);
+
+	}
+	if (keyStates[GLFW_MOUSE_BUTTON_RIGHT] && prevKeyStates[GLFW_MOUSE_BUTTON_RIGHT]) { // Place block
+		if (now - breakBlockDelay > 0.15) {
+			breakBlockDelay = now;
+			auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
+			glm::vec3 posToPlace = returnVecs.first + returnVecs.second;
+			if (!checkAnyPlayerCollision(posToPlace)) {
+				world->placeBlock(posToPlace.x, posToPlace.y, posToPlace.z, rand() % 5 + 1);
+			}
+		}
+	}
+	else if (keyStates[GLFW_MOUSE_BUTTON_RIGHT] && !prevKeyStates[GLFW_MOUSE_BUTTON_RIGHT]) {
+		auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
+		glm::vec3 posToPlace = returnVecs.first + returnVecs.second;
+		if (!checkAnyPlayerCollision(posToPlace)) {
+			world->placeBlock(posToPlace.x, posToPlace.y, posToPlace.z, rand() % 5 + 1);
+		}
+		breakBlockDelay = now;
+	}
+
 	if (gravityOn) {
 		if (keyStates[GLFW_KEY_SPACE]) {
 			if (!isJumping)
@@ -208,6 +246,8 @@ void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float delta
 	else if (!gravityOn) {
 		camera->processKeyboardInput(keyStates, deltaTime);
 	}
+
+	prevKeyStates = keyStates;
 }
 
 void Player::jump() {
@@ -215,6 +255,32 @@ void Player::jump() {
 		verticalVelocity = jumpAcceleration;
 		isJumping = true;
 	}
+}
+
+bool Player::checkAnyPlayerCollision(glm::vec3 blockPos) {
+	glm::vec3 cameraPos = camera->getCameraPos();
+	glm::vec3 playerAABBmin(cameraPos.x - 0.2, cameraPos.y - 1.8, cameraPos.z - 0.2);
+	glm::vec3 playerAABBmax(cameraPos.x + 0.2, cameraPos.y + 0.1, cameraPos.z + 0.2);
+
+	int xMin = floor(playerAABBmin.x);
+	int xMax = floor(playerAABBmax.x);
+	int zMin = floor(playerAABBmin.z);
+	int zMax = floor(playerAABBmax.z);
+	int yMin = floor(playerAABBmin.y);
+	int yMax = floor(playerAABBmax.y);
+
+	// Check for collision on the x-axis
+	for (int x = xMin; x <= xMax; x++) {
+		for (int y = yMin; y <= yMax; y++) {
+			for (int z = zMin; z <= zMax; z++) {
+				if (glm::vec3(x, y, z ) == blockPos) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
 }
 
 int mod(int value, int modulus) { // Fixes negative modulus issue
@@ -236,7 +302,7 @@ float intbound(float s, float ds) {
 	"A Fast Voxel Traversal Algorithm for Ray Tracing" - http://www.cse.yorku.ca/~amana/research/grid.pdf accessed March 2nd, 2024
 */
 
-void Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius) {
+std::pair<glm::vec3, glm::vec3> Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius) {
 	// Cube containing origin point.
 	int x = std::floor(origin.x);
 	int y = std::floor(origin.y);
@@ -264,7 +330,7 @@ void Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius) {
 	glm::vec3 face;
 
 	if (dx == 0 && dy == 0 && dz == 0) {
-		return;
+		return { {NULL, NULL, NULL}, {NULL, NULL, NULL} };
 	}
 
 	radius /= sqrt(dx * dx + dy * dy + dz * dz);
@@ -273,7 +339,7 @@ void Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius) {
 		if (y < 255 && y >= 0) {
 			if (world->getBlockAtGlobal(x, y, z, false) != 0 && world->getBlockAtGlobal(x, y, z, false) != 69) {
 				if (y != 0) {
-					world->breakBlock(x, y, z);
+					return { {x, y, z}, {face} };
 				}
 				break;
 			}
@@ -320,4 +386,5 @@ void Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius) {
 			}
 		}
 	}
+	return { {NULL, NULL, NULL}, {NULL, NULL, NULL} };
 }

@@ -27,7 +27,7 @@
     <ClCompile Include="src\cpp\Rendering\IndexBuffer.cpp" />
     <ClCompile Include="src\cpp\Rendering\Renderer.cpp" />
     <ClCompile Include="src\cpp\Rendering\Shader.cpp" />
-    <ClCompile Include="src\cpp\Rendering\Texture.cpp" />
+    <ClCompile Include="src\cpp\Rendering\TextureArray.cpp" />
     <ClCompile Include="src\cpp\Rendering\UI\DebugUI.cpp" />
     <ClCompile Include="src\cpp\Rendering\UI\UserInterface.cpp" />
     <ClCompile Include="src\cpp\Rendering\VertexArray.cpp" />
@@ -48,7 +48,7 @@
     <ClInclude Include="src\h\Rendering\IndexBuffer.h" />
     <ClInclude Include="src\h\Rendering\Renderer.h" />
     <ClInclude Include="src\h\Rendering\Shader.h" />
-    <ClInclude Include="src\h\Rendering\Texture.h" />
+    <ClInclude Include="src\h\Rendering\TextureArray.h" />
     <ClInclude Include="src\h\Rendering\UI\DebugUI.h" />
     <ClInclude Include="src\h\Rendering\UI\UserInterface.h" />
     <ClInclude Include="src\h\Rendering\VertexArray.h" />

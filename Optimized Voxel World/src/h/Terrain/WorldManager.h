@@ -6,7 +6,7 @@
 #include "h/Rendering/Renderer.h"
 #include "h/Terrain/ChunkLoader.h"
 #include "h/Terrain/Chunk.h"
-#include "h/Rendering/Texture.h"
+#include "h/Rendering/TextureArray.h"
 #include "h/Rendering/Camera.h"
 
 struct PairHash {
@@ -31,6 +31,7 @@ public:
 	int getBlockAtGlobal(int worldX, int worldY, int worldZ, bool fromSelf);
 	void switchRenderMethod();
 	void breakBlock(int worldX, int worldY, int worldZ);
+	void placeBlock(int worldX, int worldY, int worldZ, unsigned char blockToPlace);
 private:
 	void addQuadVerticesAndIndices(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>> quad, ChunkCoordPair chunkCoords, int faceType, int offset);
 	void genMeshForSingleChunk(ChunkCoordPair key);
@@ -47,7 +48,7 @@ private:
 
 	Renderer renderer;
 	ChunkLoader chunkLoader;
-	Texture blockTextureArray;
+	TextureArray blockTextureArray;
 
 	std::unordered_map<ChunkCoordPair, Chunk, PairHash> worldMap;
 	std::unordered_map<ChunkCoordPair, std::vector<Vertex>, PairHash> verticesByChunk;

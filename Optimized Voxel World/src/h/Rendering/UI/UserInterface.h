@@ -1,5 +1,5 @@
 #pragma once
-#include "h/Rendering/Texture.h"
+#include "h/Rendering/TextureArray.h"
 
 class Shader;
 class UserInterface {
@@ -9,7 +9,7 @@ public:
 	void render(Shader& s);
 private:
 	unsigned int va, vb, eb;
-	Texture textureArray;
+	TextureArray textureArray;
 	static const float crosshairVertices[4][6];
 	static const unsigned int crosshairIndices[6];
 };
