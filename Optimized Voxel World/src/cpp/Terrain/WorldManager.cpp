@@ -13,14 +13,16 @@ WorldManager::WorldManager() :
 	chunkUpdate.store(false);
 }
 
-bool WorldManager::initialize() {
+bool WorldManager::initialize(ProcGen* pg) {
 
 	if (!renderer.initialize()) {
 		std::cout << "Renderer failed to initialize in World Manager\n";
 		return false;
 	}
 
-	blockTextureArray = TextureArray({ "blocks/dirt.png", "blocks/grass_top.png", "blocks/grass_side.png", "blocks/stone.png", "blocks/bedrock.png", "blocks/sand.png"}, false);
+	blockTextureArray = TextureArray({ "blocks/dirt.png", "blocks/grass_top.png", "blocks/grass_side.png", "blocks/stone.png", "blocks/bedrock.png", "blocks/sand.png", "blocks/water.png"}, false);
+
+	proceduralAlgorithm = pg;
 
 	return true;
 }
@@ -52,7 +54,7 @@ void WorldManager::updateRenderBuffers() {
 	updatedRenderChunks = false;
 }
 
-void WorldManager::updateRenderChunks(int originX, int originZ, int renderRadius) {
+void WorldManager::updateRenderChunks(int originX, int originZ, int renderRadius, bool unloadAll) {
 	this->renderRadius = renderRadius;
 
 	auto loadVector = chunkLoader.getLoadList(originX, originZ, renderRadius);
@@ -62,13 +64,15 @@ void WorldManager::updateRenderChunks(int originX, int originZ, int renderRadius
 
 		loadFuture.get();
 
-		if (updatedRenderChunks) {
-			updateRenderBuffers();
+		if (!unloadAll) {
+			if (updatedRenderChunks) {
+				updateRenderBuffers();
+			}
 		}
 
 		stopAsync.store(false);
 
-		unloadChunks(loadVector);
+		unloadChunks(loadVector, unloadAll);
 	}
 
 	loadFuture = std::async(std::launch::async, [this, loadVector] {
@@ -87,6 +91,7 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 			if (result.second) { // Chunk was newly inserted
 				auto& newChunk = result.first->second;
 				newChunk.setChunkCoords(key.first, key.second);
+				newChunk.setProcGenReference(proceduralAlgorithm);
 				newChunk.generateChunk();
 				newChunk.setWorldReference(this);
 				genMeshForSingleChunk(key);
@@ -123,22 +128,32 @@ void WorldManager::genMeshForSingleChunk(ChunkCoordPair key) {
 	markChunkReadyForRender(key);
 }
 
-void WorldManager::unloadChunks(const std::vector<std::pair<int, int>>& loadChunks) {
+void WorldManager::unloadChunks(const std::vector<std::pair<int, int>>& loadChunks, bool all) { // all - unload ALL for regeneration or unload those out of render distance
 	std::unordered_set<std::pair<int, int>, PairHash> loadedChunksSet(loadChunks.begin(), loadChunks.end());
 
 	// Unload chunks
-	std::set<ChunkCoordPair> keysToDelete;
-	for (const auto& chunkKey : worldMap) {
-		if (loadedChunksSet.find(chunkKey.first) == loadedChunksSet.end()) {
-			keysToDelete.insert(chunkKey.first);
+	if (!all) {
+		std::set<ChunkCoordPair> keysToDelete;
+		for (const auto& chunkKey : worldMap) {
+			if (loadedChunksSet.find(chunkKey.first) == loadedChunksSet.end()) {
+				keysToDelete.insert(chunkKey.first);
+			}
+		}
+
+		for (const auto& key : keysToDelete) {
+			verticesByChunk.erase(key);
+			indicesByChunk.erase(key);
+			renderer.eraseBuffers(key);
+			worldMap.erase(key);
 		}
 	}
-
-	for (const auto& key : keysToDelete) {
-		verticesByChunk.erase(key);
-		indicesByChunk.erase(key);
-		renderer.eraseBuffers(key);
-		worldMap.erase(key);
+	else {
+		for (const auto& key : worldMap) {
+			verticesByChunk.erase(key.first);
+			indicesByChunk.erase(key.first);
+			renderer.eraseBuffers(key.first);
+		}
+		worldMap.clear();
 	}
 }
 
@@ -164,6 +179,7 @@ int WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, bool from
 		if (fromSelf) {
 			worldMap.emplace(key, Chunk());
 			worldMap[key].setChunkCoords(key.first, key.second);
+			worldMap[key].setProcGenReference(proceduralAlgorithm);
 			worldMap[key].generateChunk();
 			worldMap[key].setWorldReference(this);
 			return static_cast<int>(worldMap[key].getBlockAt(worldX, worldY, worldZ));
@@ -375,6 +391,8 @@ glm::vec3 WorldManager::calculatePosition(std::pair<unsigned char, std::pair<std
 		case 3:
 			return glm::vec3(cxcz.first * 16 + q.second.second.second + 1, q.second.first.first, offset + 1 + cxcz.second * 16);
 		}
+	default:
+		return glm::vec3(NULL, NULL, NULL);
 	}
 }
 

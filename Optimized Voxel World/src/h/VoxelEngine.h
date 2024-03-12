@@ -8,6 +8,7 @@
 #include "h/Player/Player.h"
 #include "h/Rendering/UI/DebugUI.h"
 #include "h/Rendering/UI/UserInterface.h"
+#include "h/Terrain/ProcGen/ProcGenGui.h"
 
 class VoxelEngine {
 public: 
@@ -33,6 +34,8 @@ private:
 	Camera camera;
 	DebugUI debugUI;
 	UserInterface userInterface;;
+	ProcGenGui proceduralGenerationGui;
+	ProcGen proceduralGeneration;
 
 	Player player;
 
@@ -43,10 +46,11 @@ private:
 	int lastChunkX, lastChunkZ;
 	int fps;
 	bool renderDebug;
+	bool imGuiCursor;
 	std::map<GLuint, bool> keyStates;
 	std::map<GLuint, bool> lastKeyStates;
 	std::map<GLuint, bool> playerKeyStates;
-	static const GLuint engineKeys[5];
+	static const GLuint engineKeys[6];
 	static const GLuint playerKeys[6];
 
 	int renderRadius;

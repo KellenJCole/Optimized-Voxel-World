@@ -10,14 +10,14 @@ VoxelEngine::VoxelEngine() :
     deltaTime(0.0f),
     lastFrame(0.0f),
     fps(0),
-renderDebug(false) {
+    renderDebug(false),
+    imGuiCursor(false),
+    renderRadius(30) {
 
     currChunkX = camera.getCameraPos().x / 16;
     currChunkZ = camera.getCameraPos().z / 16;
     lastChunkX = currChunkX;
     lastChunkZ = lastChunkZ;
-
-    renderRadius = 30;
 }
 
 bool VoxelEngine::initialize() {
@@ -53,6 +53,8 @@ bool VoxelEngine::initialize() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    glfwWindowHint(GLFW_SAMPLES, 4);
+
     if (glewInit() != GLEW_OK) {
         std::cout << "glewInit() != GLEW_OK\n";
         return false;
@@ -60,7 +62,7 @@ bool VoxelEngine::initialize() {
 
     std::cout << glGetString(GL_VERSION) << "\n";
 
-    if (!worldManager.initialize()) {
+    if (!worldManager.initialize(&proceduralGeneration)) {
         std::cout << "World Manager initialization failure\n";
     }
     blockShader = Shader("src/res/shaders/Block.shader");
@@ -94,6 +96,7 @@ bool VoxelEngine::initialize() {
     keyStates[GLFW_KEY_I] = false; // Toggle debug text rendering
     keyStates[GLFW_KEY_UP] = false; // Increase render distance
     keyStates[GLFW_KEY_DOWN] = false; // Decrease render distance
+    keyStates[GLFW_KEY_ESCAPE] = false; // Switch cursor mode
 
     lastKeyStates = keyStates;
 
@@ -110,12 +113,14 @@ bool VoxelEngine::initialize() {
 
     player.initialize();
 
+    proceduralGenerationGui.initialize(window, &proceduralGeneration);
+
     return true;
 }
 
 void VoxelEngine::run() {
     std::cout << "Entering Voxel Engine loop. ProcessInputs->Update->Render\n";
-    worldManager.updateRenderChunks(0, 0, renderRadius);
+    worldManager.updateRenderChunks(0, 0, renderRadius, false);
 
     double timeAtLastFPSCheck = glfwGetTime();
     int numberOfFrames = 0;
@@ -142,7 +147,7 @@ void VoxelEngine::run() {
 void VoxelEngine::processInput() {
     float currFrame = glfwGetTime();
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
         keyStates[engineKeys[i]] = (glfwGetKey(window, engineKeys[i]) == GLFW_PRESS) ? true : false;
     }
 
@@ -150,29 +155,49 @@ void VoxelEngine::processInput() {
         playerKeyStates[playerKeys[i]] = (glfwGetKey(window, playerKeys[i]) == GLFW_PRESS) ? true : false;
     }
 
-    playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] =   (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) ? true : false;
+    playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] = (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) ? true : false;
     playerKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) ? true : false;
-    
-    player.processKeyboardInput(playerKeyStates, deltaTime);
 
-    if (keyStates[GLFW_KEY_F] && !lastKeyStates[GLFW_KEY_F])                // F -> Toggle polygon line/fill
-        worldManager.switchRenderMethod();
-
-    if (keyStates[GLFW_KEY_G] && !lastKeyStates[GLFW_KEY_G])                // G -> Toggle gravity
-        player.toggleGravity();
-
-    if (keyStates[GLFW_KEY_I] && !lastKeyStates[GLFW_KEY_I])                // I -> Toggle debug text
-        renderDebug = !renderDebug;
-
-    if (keyStates[GLFW_KEY_UP] && !lastKeyStates[GLFW_KEY_UP]) {            // Up arrow -> Increase render radius by 1
-        renderRadius += 1;
-        worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius);
+    if (keyStates[GLFW_KEY_ESCAPE] && !lastKeyStates[GLFW_KEY_ESCAPE]) {    // Esc -Switch cursor mode
+        imGuiCursor = !imGuiCursor;
+        if (imGuiCursor) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            for (int i = 0; i < 6; i++) {
+                playerKeyStates[playerKeys[i]] = false;
+            }
+            playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] = false;
+            playerKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = false;
+            player.processKeyboardInput(playerKeyStates, deltaTime);
+        }
+        else {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
     }
 
-    if (keyStates[GLFW_KEY_DOWN] && !lastKeyStates[GLFW_KEY_DOWN]) {        // Down arrow -> Decrease render radius by 1
-        if (renderRadius > 1) {
-            renderRadius--;
-            worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius);
+    if (!imGuiCursor) {
+        player.processKeyboardInput(playerKeyStates, deltaTime);
+    }
+
+    if (!imGuiCursor) {
+        if (keyStates[GLFW_KEY_F] && !lastKeyStates[GLFW_KEY_F])                // F -> Toggle polygon line/fill
+            worldManager.switchRenderMethod();
+
+        if (keyStates[GLFW_KEY_G] && !lastKeyStates[GLFW_KEY_G])                // G -> Toggle gravity
+            player.toggleGravity();
+
+        if (keyStates[GLFW_KEY_I] && !lastKeyStates[GLFW_KEY_I])                // I -> Toggle debug text
+            renderDebug = !renderDebug;
+
+        if (keyStates[GLFW_KEY_UP] && !lastKeyStates[GLFW_KEY_UP]) {            // Up arrow -> Increase render radius by 1
+            renderRadius += 1;
+            worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
+        }
+
+        if (keyStates[GLFW_KEY_DOWN] && !lastKeyStates[GLFW_KEY_DOWN]) {        // Down arrow -> Decrease render radius by 1
+            if (renderRadius > 1) {
+                renderRadius--;
+                worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
+            }
         }
     }
 
@@ -185,9 +210,14 @@ void VoxelEngine::update() {
     
     worldManager.update();
 
-    if (currChunkX != lastChunkX || currChunkZ != lastChunkZ) {
-        worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius);
+    bool updateTerrain = proceduralGenerationGui.shouldUpdate();
+    if (updateTerrain) {
+        worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, true);
     }
+    else if (currChunkX != lastChunkX || currChunkZ != lastChunkZ) {
+        worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
+    }
+
     lastChunkX = currChunkX;
     lastChunkZ = currChunkZ;
 
@@ -206,6 +236,7 @@ void VoxelEngine::render() {
     blockShader.setUniform4fv("view", (glm::mat4&)camera.getView());
     blockShader.setUniform4fv("projection", (glm::mat4&)camera.getProjection());
     // Render stuff below here
+    proceduralGenerationGui.startLoop();
     worldManager.render();
 
     if (renderDebug) {
@@ -221,6 +252,8 @@ void VoxelEngine::render() {
 
     userInterface.render(userInterfaceShader);
     
+    proceduralGenerationGui.endLoop();
+
     glfwSwapBuffers(window);
 
     glfwPollEvents();
@@ -248,9 +281,11 @@ void VoxelEngine::cursor_position_callback(GLFWwindow* window, double xpos, doub
 }
 
 void VoxelEngine::processMouseInput(double xpos, double ypos) {
-    camera.processMouseMovement(xpos, ypos);
+    if (!imGuiCursor) {
+        camera.processMouseMovement(xpos, ypos);
+    }
 }
 
-const GLuint VoxelEngine::engineKeys[5] = { GLFW_KEY_F, GLFW_KEY_G, GLFW_KEY_I, GLFW_KEY_UP, GLFW_KEY_DOWN };
+const GLuint VoxelEngine::engineKeys[6] = { GLFW_KEY_F, GLFW_KEY_G, GLFW_KEY_I, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_ESCAPE };
 
 const GLuint VoxelEngine::playerKeys[6] = { GLFW_KEY_W, GLFW_KEY_A, GLFW_KEY_S, GLFW_KEY_D, GLFW_KEY_SPACE, GLFW_KEY_LEFT_SHIFT };

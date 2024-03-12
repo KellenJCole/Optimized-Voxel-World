@@ -4,7 +4,7 @@
 Camera::Camera() {}
 
 Camera::Camera(float inputSensitivity)
-	: cameraPos(0.0f, 250.0f, 0.0f),
+	: cameraPos(0.5f, 250.0f, 0.5f),
 	cameraFront(0.0f, 0.0f, -1.0f),
 	cameraUp(0.0f, 1.0f, 0.0f),
 	yaw(-90.0f),
@@ -32,21 +32,29 @@ void Camera::processKeyboardInput(std::map<unsigned int, bool> keyStates, float 
 {
 	float camSpeed;
 	if (mode) {
-		camSpeed = 25.f * deltaTime;
+		camSpeed = 300.f * deltaTime;
 		glm::vec3 moveDir;
 		float originalY = cameraPos.y;
 
-		if (keyStates[GLFW_KEY_W])
+		if (keyStates[GLFW_KEY_W]) {
 			moveDir = glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
+			cameraPos += moveDir * camSpeed;
+		}
 
-		if (keyStates[GLFW_KEY_S])
+		if (keyStates[GLFW_KEY_S]) {
 			moveDir = -glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
+			cameraPos += moveDir * camSpeed;
+		}
 
-		if(keyStates[GLFW_KEY_A])
+		if (keyStates[GLFW_KEY_A]) {
 			moveDir = -glm::normalize(glm::cross(cameraFront, cameraUp));
+			cameraPos += moveDir * camSpeed;
+		}
 
-		if (keyStates[GLFW_KEY_D])
+		if (keyStates[GLFW_KEY_D]) {
 			moveDir = glm::normalize(glm::cross(cameraFront, cameraUp));
+			cameraPos += moveDir * camSpeed;
+		}
 
 		if (keyStates[GLFW_KEY_LEFT_SHIFT]) {
 			cameraPos.y -= camSpeed * .5;

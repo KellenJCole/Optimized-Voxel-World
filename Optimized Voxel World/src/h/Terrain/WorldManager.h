@@ -22,9 +22,9 @@ using ChunkCoordPair = std::pair<int, int>;
 class WorldManager {
 public:
 	WorldManager();
-	bool initialize();
+	bool initialize(ProcGen* pg);
 	void update();
-	void updateRenderChunks(int originX, int originZ, int renderRadius);
+	void updateRenderChunks(int originX, int originZ, int renderRadius, bool unloadAll);
 	void render();
 	void cleanup();
 	void setCamAndShaderPointers(Shader* sha, Camera* cam);
@@ -39,7 +39,7 @@ private:
 	void updateMesh(ChunkCoordPair key);
 
 	void loadChunksAsync(const std::vector<std::pair<int, int>>& loadChunks);
-	void unloadChunks(const std::vector<std::pair<int, int>>& loadChunks);
+	void unloadChunks(const std::vector<std::pair<int, int>>& loadChunks, bool all);
 
 	void updateRenderBuffers();
 
@@ -72,5 +72,7 @@ private:
 	std::atomic<bool> chunkUpdate;
 	int renderRadius;
 	std::atomic<bool> stopAsync;
+
+	ProcGen* proceduralAlgorithm;
 
 };

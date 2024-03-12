@@ -4,7 +4,7 @@
 #include <set>
 #include <h/Terrain/GreedyAlgorithm.h>
 #include <h/glm/glm.hpp>
-#include <h/FastNoise-master/FastNoise.h>
+#include "h/Terrain/ProcGen/ProcGen.h"
 
 enum BlockFace {
 	NEG_X = 1 << 0, // 0b000001
@@ -22,7 +22,7 @@ public:
 	Chunk();
 	void generateChunk();
 	void setWorldReference(WorldManager* wm);
-
+	void setProcGenReference(ProcGen* pg);
 	void unload();
 
 	// Coordinate functions
@@ -36,11 +36,10 @@ public:
 	void placeBlock(int localX, int localY, int localZ, unsigned char blockToPlace);
 	~Chunk();
 private:
+	ProcGen* proceduralAlgorithm;
 	int convert3DCoordinatesToFlatIndex(int x, int y, int z);
 	glm::ivec3 convertFlatIndexTo3DCoordinates(int flatIndex);
 	void greedyMesh();
-	unsigned int getBiome();
-
 	unsigned char checkNeighbors(int blockIndex); // Returns a bitmask representing which faces are visible and which are not
 
 	GreedyAlgorithm ga;

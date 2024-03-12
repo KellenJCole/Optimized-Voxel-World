@@ -12,7 +12,7 @@ Player::Player() :
 	jumpAcceleration(-15),
 	breakBlockDelay(0)
 {
-	srand(time(NULL));
+	srand((unsigned int)time(NULL));
 }
 
 void Player::initialize() {

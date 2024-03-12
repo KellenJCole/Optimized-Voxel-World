@@ -17,114 +17,18 @@ Chunk::Chunk() {
 	iFaces[5] = POS_Z;
 	hasBeenGenerated = false;
 }
-/*
-"dirt.png", "grass_top.png", "grass_side.png", "stone.png", "bedrock.png", "sand.png"
-Dirt = 1
-Grass = 2
-Stone = 3
-Bedrock = 4
-Sand = 5
-*/
-void Chunk::generateChunk() {
-	chunk.resize(65536, 0);
-	// chunk is defined as an array of unsigned chars of length 65536 (16 * 256 * 16)
 
-	FastNoise layer1, layer2, layer3, layer4;
-	layer1.SetNoiseType(FastNoise::Perlin);
-	layer1.SetSeed(12);
-	layer1.SetFrequency(.01);
-	layer1.SetFractalType(FastNoise::FractalType::RigidMulti);
-	layer1.SetFractalOctaves(1);
-	layer1.SetFractalLacunarity(2.000);
-	layer1.SetFractalGain(0.59);
-
-	layer2.SetNoiseType(FastNoise::Perlin);
-	layer2.SetSeed(13);
-	layer2.SetFrequency(.02);
-	layer2.SetFractalType(FastNoise::FractalType::RigidMulti);
-	layer2.SetFractalOctaves(1);
-	layer2.SetFractalLacunarity(2.000);
-	layer2.SetFractalGain(0.59);
-
-	unsigned int biome = getBiome();
-
-
-	if (biome == 0) {
-		for (int i = 0; i < CHUNK_HEIGHT; i++) {
-			for (int j = 0; j < CHUNK_HEIGHT; j++) {
-				int flatIndex = i * CHUNK_HEIGHT + j;
-				glm::ivec3 pos = convertFlatIndexTo3DCoordinates(flatIndex);
-
-				float worldX = chunkX * 16.0f + pos.x; // Assuming each chunk has a width of 16 units
-				float worldZ = chunkZ * 16.0f + pos.z;
-
-				float noiseValue = layer1.GetNoise(worldX, worldZ) + (0.5 * layer2.GetNoise(worldX, worldZ));
-
-				int groundHeight = static_cast<int>((noiseValue + 1) * 64) + 70; // Increased range for height variation
-
-				if (pos.y == groundHeight) {
-					chunk[flatIndex] = 2;
-				}
-				else if (pos.y == 0) {
-					chunk[flatIndex] = 4;
-				}
-				else if (pos.y < groundHeight && groundHeight - pos.y <= 5) {
-					chunk[flatIndex] = 1;
-				}
-				else if (pos.y < groundHeight && groundHeight - pos.y > 5) {
-					chunk[flatIndex] = 3;
-				}
-				else {
-					chunk[flatIndex] = 0;
-				}
-			}
-		}
-	}
-	else {
-		for (int i = 0; i < CHUNK_HEIGHT; i++) {
-			for (int j = 0; j < CHUNK_HEIGHT; j++) {
-				int flatIndex = i * CHUNK_HEIGHT + j;
-				glm::ivec3 pos = convertFlatIndexTo3DCoordinates(flatIndex);
-
-				float worldX = chunkX * 16.0f + pos.x; // Assuming each chunk has a width of 16 units
-				float worldZ = chunkZ * 16.0f + pos.z;
-
-				float noiseValue = 0.5 * layer1.GetNoise(worldX, worldZ) + layer2.GetNoise(worldX, worldZ);
-
-				int groundHeight = static_cast<int>((noiseValue + 1) * 20) + 100; // Increased range for height variation
-
-				if (pos.y == 0) {
-					chunk[flatIndex] = 4;
-				}
-				else if (pos.y <= groundHeight) {
-					chunk[flatIndex] = 5;
-				}
-				else {
-					chunk[flatIndex] = 0;
-				}
-			}
-		}
-	}
-	hasBeenGenerated = true;
-
+void Chunk::setProcGenReference(ProcGen* pg) {
+	proceduralAlgorithm = pg;
 }
 
-unsigned int Chunk::getBiome() {
-	FastNoise biomeNoise;
-	biomeNoise.SetNoiseType(FastNoise::NoiseType::Cellular);
-	biomeNoise.SetSeed(1337);
-	biomeNoise.SetFrequency(0.011);
-	biomeNoise.SetCellularDistanceFunction(FastNoise::CellularDistanceFunction::Euclidean);
-	biomeNoise.SetCellularReturnType(FastNoise::CellularReturnType::Distance2Sub);
-	biomeNoise.SetCellularJitter(1.120);
+void Chunk::generateChunk() {
+	chunk.resize(65536, 0);
 
-	float noiseValue = biomeNoise.GetNoise(chunkX, chunkZ);
-	if (noiseValue < 0.5) {
-		return 0;
-	}
-	else {
-		return 1;
-	}
+	proceduralAlgorithm->generateChunk(chunk, std::make_pair(chunkX, chunkZ));
+
+	hasBeenGenerated = true;
+
 }
 
 void Chunk::setWholeChunkMeshes() {
@@ -196,6 +100,7 @@ int Chunk::convert3DCoordinatesToFlatIndex( int x,  int y,  int z) {
 	return (y << 8) | (z << 4) | x;
 }
 
+
 glm::ivec3 Chunk::convertFlatIndexTo3DCoordinates(int flatIndex) {
 	glm::ivec3 returnVec;
 	returnVec.x = flatIndex & 0x0F; // Same as flatIndex % 16
@@ -203,6 +108,7 @@ glm::ivec3 Chunk::convertFlatIndexTo3DCoordinates(int flatIndex) {
 	returnVec.z = (flatIndex & 0xFF) >> 4; // Same as (flatIndex % 256) / 16
 	return returnVec;
 }
+
 
 void Chunk::setChunkCoords(int cx, int cz) {
 	chunkX = cx;

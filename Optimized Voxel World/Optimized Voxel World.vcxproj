@@ -28,6 +28,7 @@
     <ClCompile Include="src\cpp\Rendering\Renderer.cpp" />
     <ClCompile Include="src\cpp\Rendering\Shader.cpp" />
     <ClCompile Include="src\cpp\Rendering\TextureArray.cpp" />
+    <ClCompile Include="src\cpp\Rendering\Transparencies.cpp" />
     <ClCompile Include="src\cpp\Rendering\UI\DebugUI.cpp" />
     <ClCompile Include="src\cpp\Rendering\UI\UserInterface.cpp" />
     <ClCompile Include="src\cpp\Rendering\VertexArray.cpp" />
@@ -35,11 +36,29 @@
     <ClCompile Include="src\cpp\Terrain\Chunk.cpp" />
     <ClCompile Include="src\cpp\Terrain\ChunkLoader.cpp" />
     <ClCompile Include="src\cpp\Terrain\GreedyAlgorithm.cpp" />
+    <ClCompile Include="src\cpp\Terrain\ProcGen\ProcGen.cpp" />
+    <ClCompile Include="src\cpp\Terrain\ProcGen\ProcGenGui.cpp" />
     <ClCompile Include="src\cpp\Terrain\WorldManager.cpp" />
     <ClCompile Include="src\cpp\VoxelEngine.cpp" />
+    <ClCompile Include="src\h\Dear ImGui\imgui.cpp" />
+    <ClCompile Include="src\h\Dear ImGui\imgui_demo.cpp" />
+    <ClCompile Include="src\h\Dear ImGui\imgui_draw.cpp" />
+    <ClCompile Include="src\h\Dear ImGui\imgui_impl_glfw.cpp" />
+    <ClCompile Include="src\h\Dear ImGui\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="src\h\Dear ImGui\imgui_tables.cpp" />
+    <ClCompile Include="src\h\Dear ImGui\imgui_widgets.cpp" />
     <ClCompile Include="src\h\FastNoise-master\FastNoise.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\h\Dear ImGui\imconfig.h" />
+    <ClInclude Include="src\h\Dear ImGui\imgui.h" />
+    <ClInclude Include="src\h\Dear ImGui\imgui_impl_glfw.h" />
+    <ClInclude Include="src\h\Dear ImGui\imgui_impl_opengl3.h" />
+    <ClInclude Include="src\h\Dear ImGui\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="src\h\Dear ImGui\imgui_internal.h" />
+    <ClInclude Include="src\h\Dear ImGui\imstb_rectpack.h" />
+    <ClInclude Include="src\h\Dear ImGui\imstb_textedit.h" />
+    <ClInclude Include="src\h\Dear ImGui\imstb_truetype.h" />
     <ClInclude Include="src\h\FastNoise-master\FastNoise.h" />
     <ClInclude Include="src\h\Player\Player.h" />
     <ClInclude Include="src\h\Rendering\BlockGeometry.h" />
@@ -49,6 +68,7 @@
     <ClInclude Include="src\h\Rendering\Renderer.h" />
     <ClInclude Include="src\h\Rendering\Shader.h" />
     <ClInclude Include="src\h\Rendering\TextureArray.h" />
+    <ClInclude Include="src\h\Rendering\Transparencies.h" />
     <ClInclude Include="src\h\Rendering\UI\DebugUI.h" />
     <ClInclude Include="src\h\Rendering\UI\UserInterface.h" />
     <ClInclude Include="src\h\Rendering\VertexArray.h" />
@@ -58,16 +78,23 @@
     <ClInclude Include="src\h\Terrain\Chunk.h" />
     <ClInclude Include="src\h\Terrain\ChunkLoader.h" />
     <ClInclude Include="src\h\Terrain\GreedyAlgorithm.h" />
+    <ClInclude Include="src\h\Terrain\ProcGen\ProcGen.h" />
+    <ClInclude Include="src\h\Terrain\ProcGen\ProcGenGui.h" />
     <ClInclude Include="src\h\Terrain\WorldManager.h" />
     <ClInclude Include="src\h\VoxelEngine.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="src\h\Dear ImGui\imgui.natstepfilter" />
     <None Include="src\res\shaders\Block.shader" />
     <None Include="src\res\shaders\Debug.shader" />
+    <None Include="src\res\shaders\Transparent.shader" />
     <None Include="src\res\shaders\UserInterface.shader" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="src\res\textures\User Interface\crosshair.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="src\h\Dear ImGui\imgui.natvis" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
