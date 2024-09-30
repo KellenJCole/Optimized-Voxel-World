@@ -15,7 +15,6 @@ WorldManager::WorldManager() :
 	lastFrustumCheck = glfwGetTime();
 
 	stopAsync.store(false);
-	chunkUpdate.store(false);
 }
 
 bool WorldManager::initialize(ProcGen* pg) {
@@ -322,7 +321,6 @@ void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
 		std::lock(worldMapMtx, chunkUpdateMtx);
 		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx, std::adopt_lock);
 		std::lock_guard<std::recursive_mutex> chunkLock(chunkUpdateMtx, std::adopt_lock);
-		chunkUpdate.store(true);
 		auto it = worldMap.find(key);
 		if (it != worldMap.end()) {
 			// Calculate local coordinates
@@ -345,7 +343,6 @@ void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
 			}
 		}
 	}
-	chunkCondition.notify_one();
 }
 
 void WorldManager::placeBlock(int worldX, int worldY, int worldZ, unsigned char blockToPlace) {
@@ -357,7 +354,6 @@ void WorldManager::placeBlock(int worldX, int worldY, int worldZ, unsigned char 
 		std::lock(worldMapMtx, chunkUpdateMtx);
 		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx, std::adopt_lock);
 		std::lock_guard<std::recursive_mutex> chunkLock(chunkUpdateMtx, std::adopt_lock);
-		chunkUpdate.store(true);
 		auto it = worldMap.find(key);
 		if (it != worldMap.end()) {
 			// Calculate local coordinates
@@ -380,7 +376,6 @@ void WorldManager::placeBlock(int worldX, int worldY, int worldZ, unsigned char 
 			}
 		}
 	}
-	chunkCondition.notify_one();
 }
 
 void WorldManager::updateMesh(ChunkCoordPair key) {
@@ -411,8 +406,6 @@ void WorldManager::updateMesh(ChunkCoordPair key) {
 	else {
 		std::cerr << "updateMesh - Chunk not found or is null: (" << key.first << ", " << key.second << ")\n";
 	}
-
-	chunkUpdate.store(false);
 }
 
 void WorldManager::addQuadVerticesAndIndices(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>> quad, ChunkCoordPair chunkCoords, int faceType, int offset, int levelOfDetail) {

@@ -80,9 +80,7 @@ private:
     std::recursive_mutex chunkUpdateMtx;
     std::recursive_mutex worldMapMtx;
     std::recursive_mutex renderBuffersMtx;
-    std::condition_variable chunkCondition;
     std::atomic<bool> updatedRenderChunks;
-    std::atomic<bool> chunkUpdate;
     std::atomic<bool> stopAsync;
 
 
