@@ -3,7 +3,7 @@
 */
 
 #shader vertex
-#version 450 core
+#version 460 core
 
 layout(location = 0) in vec4 vertex; // <vec2 pos, vec2 tex>
 out vec2 TexCoords;
@@ -16,7 +16,7 @@ void main() {
 }
 
 #shader fragment
-#version 450 core
+#version 460 core
 
 in vec2 TexCoords;
 out vec4 color;

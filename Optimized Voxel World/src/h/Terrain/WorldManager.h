@@ -56,10 +56,11 @@ private:
     int convertWorldCoordToChunkCoord(int worldCoord);
 
     glm::vec3 calculatePosition(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner, int faceType, ChunkCoordPair cxcz, int offset, int levelOfDetail);
-    glm::vec2 calculateTexCoords(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner, int levelOfDetail);
+    glm::vec2 calculateTexCoords(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner);
 
     Renderer renderer;
     ChunkLoader chunkLoader;
+    ProcGen* proceduralAlgorithm;
     TextureArray blockTextureArray;
 
     // Store unique_ptr to manage Chunk lifetimes
@@ -80,12 +81,11 @@ private:
     std::recursive_mutex worldMapMtx;
     std::recursive_mutex renderBuffersMtx;
     std::condition_variable chunkCondition;
-
-    float lastFrustumCheck;
     std::atomic<bool> updatedRenderChunks;
     std::atomic<bool> chunkUpdate;
-    int renderRadius;
     std::atomic<bool> stopAsync;
 
-    ProcGen* proceduralAlgorithm;
+
+    double lastFrustumCheck;
+    int renderRadius;
 };

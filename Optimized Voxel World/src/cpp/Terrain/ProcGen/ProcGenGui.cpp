@@ -52,7 +52,7 @@ void ProcGenGui::startLoop() {
 	ImGui::Begin("ProcGen Adjuster");
 
 	if (ImGui::Button("Update ProcGen")) {
-		proceduralGeneration->setNoiseState(state);
+		proceduralGeneration->setRandomNoiseState();
 		update = true;
 	}
 

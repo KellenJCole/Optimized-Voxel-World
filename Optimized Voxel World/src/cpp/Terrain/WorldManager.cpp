@@ -2,12 +2,17 @@
 #include <vector>
 #include <iostream>
 
+#define CHUNK_WIDTH 64
+#define CHUNK_DEPTH 64
+#define CHUNK_HEIGHT 256
+
 WorldManager::WorldManager() :
 	lightPos(0.0f, 2000.f, 0.0f),
 	lightColor(0.9f, 0.8f, 0.7f),
-	updatedRenderChunks(false)
+	updatedRenderChunks(false),
+	renderRadius(0)
 {
-	lastFrustumCheck = (float)glfwGetTime();
+	lastFrustumCheck = glfwGetTime();
 
 	stopAsync.store(false);
 	chunkUpdate.store(false);
@@ -28,55 +33,33 @@ bool WorldManager::initialize(ProcGen* pg) {
 }
 
 void WorldManager::update() {
-	try {
-		glm::vec3 pos = camera->getCameraPos();
-		lightPos = { (sin(glfwGetTime()) * 1000) + pos.x, 500, (cos(glfwGetTime()) * 1000) + pos.z };
+	glm::vec3 pos = camera->getCameraPos();
+	lightPos = { 0, 500, 0 };
 
-		if (updatedRenderChunks) {
-			updateRenderBuffers();
-		}
+	if (updatedRenderChunks) {
+		updateRenderBuffers();
+	}
 
-		float now = (float)glfwGetTime();
-		if (now - lastFrustumCheck >= 0.01) {
-			lastFrustumCheck = now;
+	double now = glfwGetTime();
+	if ((now - lastFrustumCheck) >= 0.01) {
+		lastFrustumCheck = now;
 
-			std::vector<std::pair<int, int>> renderChunks = camera->getVisibleChunks(renderRadius);
-			renderer.updateRenderChunks(renderChunks);
-		}
-	}
-	catch (const std::system_error& e) {
-		std::cerr << "System error in worldManager::update(): " << e.what() << "\n";
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Exception in worldManager::update(): " << e.what() << "\n";
-	}
-	catch (...) {
-		std::cerr << "Unknown error in worldManager::update().\n";
+		std::vector<std::pair<int, int>> renderChunks = camera->getVisibleChunks(renderRadius);
+		renderer.updateRenderChunks(renderChunks);
 	}
 }
 
 void WorldManager::updateRenderBuffers() {
-	try {
-		std::lock(preparedChunksMtx, renderBuffersMtx);
-		std::lock_guard<std::mutex> prepLock(preparedChunksMtx, std::adopt_lock);
-		std::lock_guard<std::recursive_mutex> lock(renderBuffersMtx, std::adopt_lock);
-		for (auto it = preparedChunks.begin(); it != preparedChunks.end(); /* no increment here */) {
-			auto key = *it;
-			renderer.updateVertexBuffer(verticesByChunk[key], key);
-			renderer.updateIndexBuffer(indicesByChunk[key], key);
-			it = preparedChunks.erase(it);
-		}
-		updatedRenderChunks = false;
+	std::lock(preparedChunksMtx, renderBuffersMtx);
+	std::lock_guard<std::mutex> prepLock(preparedChunksMtx, std::adopt_lock);
+	std::lock_guard<std::recursive_mutex> lock(renderBuffersMtx, std::adopt_lock);
+	for (auto it = preparedChunks.begin(); it != preparedChunks.end(); /* no increment here */) {
+		auto key = *it;
+		renderer.updateVertexBuffer(verticesByChunk[key], key);
+		renderer.updateIndexBuffer(indicesByChunk[key], key);
+		it = preparedChunks.erase(it);
 	}
-	catch (const std::system_error& e) {
-		std::cerr << "System error in worldManager::updateRenderBuffers(): " << e.what() << "\n";
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Exception in worldManager::updateRenderBuffers(): " << e.what() << "\n";
-	}
-	catch (...) {
-		std::cerr << "Unknown error in worldManager::updateRenderBuffers().\n";
-	}
+	updatedRenderChunks = false;
 }
 
 void WorldManager::updateRenderChunks(int originX, int originZ, int renderRadius, bool unloadAll) {
@@ -121,6 +104,9 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 		{
 			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 			if (worldMap.find(key) != worldMap.end()) {
+				if (worldMap[key]->getCurrentLod() != calculateLevelOfDetail(key)) {
+
+				}
 				genMeshForSingleChunk(key);
 
 				// Notify that the chunk is ready
@@ -132,14 +118,14 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 			newChunk->setChunkCoords(key.first, key.second);
 			newChunk->setProcGenReference(proceduralAlgorithm);
 			newChunk->setWorldReference(this);
-			newChunk->generateChunk(calculateLevelOfDetail(key));
+			newChunk->setLod(calculateLevelOfDetail(key));
+			newChunk->generateChunk();
 				
-			worldMap[key] = std::move(newChunk); // Insert without a second lock
+			worldMap[key] = std::move(newChunk);
 		}
 
 		genMeshForSingleChunk(key);
 
-		// Notify that the chunk is ready
 		markChunkReadyForRender(key);
 	}
 }
@@ -147,8 +133,8 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
 	glm::vec3 cameraPos = camera->getCameraPos();
 	ChunkCoordPair cameraKey = { 
-		cameraPos.x >= 0 ? cameraPos.x / 64 : (cameraPos.x - 63) / 64, 
-		cameraPos.z >= 0 ? cameraPos.z / 64 : (cameraPos.z - 63) / 64 
+		cameraPos.x >= 0 ? cameraPos.x / CHUNK_WIDTH : (cameraPos.x - (CHUNK_WIDTH - 1)) / CHUNK_WIDTH,
+		cameraPos.z >= 0 ? cameraPos.z / CHUNK_DEPTH : (cameraPos.z - (CHUNK_DEPTH - 1)) / CHUNK_DEPTH
 	};
 	
 	float distance = (float)(sqrt(pow(abs(ccp.first - cameraKey.first), 2) + pow(abs(ccp.second - cameraKey.second), 2)));
@@ -194,12 +180,12 @@ void WorldManager::genMeshForSingleChunk(ChunkCoordPair key) {
 	auto it = worldMap.find(key);
 	if (it != worldMap.end()) {
 		if (verticesByChunk.find(key) == verticesByChunk.end()) {
-			it->second->setWholeChunkMeshes();
+			it->second->generateChunkMeshes();
 			for (int i = 0; i < 6; i++) {
 				auto pairVec = it->second->getGreedyMeshByFaceType(i);
 				for (const auto& meshData : pairVec) {
 					for (const auto& quad : meshData.first) {
-						addQuadVerticesAndIndices(quad, key, i, meshData.second, it->second->getLod());
+						addQuadVerticesAndIndices(quad, key, i, meshData.second, it->second->getCurrentLod());
 					}
 				}
 			}
@@ -262,85 +248,70 @@ void WorldManager::cleanup() {
 }
 
 int WorldManager::convertWorldCoordToChunkCoord(int worldCoord) {
-	return (worldCoord >= 0) ? (worldCoord / 64) : ((worldCoord - 63) / 64);
+	return (worldCoord >= 0) ? (worldCoord / CHUNK_WIDTH) : ((worldCoord - (CHUNK_WIDTH - 1)) / CHUNK_WIDTH);
 }
 
 int WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, bool fromSelf, bool boundaryCheck, int prevLod, int face) {
-	try {
-		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-		int chunkX = convertWorldCoordToChunkCoord(worldX);
-		int chunkZ = convertWorldCoordToChunkCoord(worldZ);
-		std::pair<int, int> key = { chunkX, chunkZ };
+	std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+	int chunkX = convertWorldCoordToChunkCoord(worldX);
+	int chunkZ = convertWorldCoordToChunkCoord(worldZ);
+	std::pair<int, int> key = { chunkX, chunkZ };
 
-		auto it = worldMap.find(key);
-		if (it != worldMap.end()) {
-			int currentLod = worldMap[key]->getLod();
+	auto it = worldMap.find(key);
+	if (it != worldMap.end()) {
+		int currentLod = worldMap[key]->getCurrentLod();
 
-			if (boundaryCheck && prevLod != -1 && currentLod != prevLod) {
-				int lodDifference = std::pow(2, std::abs(prevLod - currentLod));
+		if (boundaryCheck && prevLod != -1 && currentLod != prevLod) {
+			int lodDifference = 1 << abs(prevLod - currentLod);
 
-				// Wrap world coordinates to local chunk coordinates and apply the chunk position
-				int localX = (((worldX % 64) + 64) % 64);
-				int localY = worldY;
-				int localZ = (((worldZ % 64) + 64) % 64);
+			// Wrap world coordinates to local chunk coordinates and apply the chunk position
+			int localX = (((worldX % CHUNK_WIDTH) + CHUNK_WIDTH) % CHUNK_WIDTH);
+			int localY = worldY;
+			int localZ = (((worldZ % CHUNK_DEPTH) + CHUNK_DEPTH) % CHUNK_DEPTH);
 
-				// If currentLod is higher (e.g., LOD 0), scale the coordinates up (multiply)
-				if (currentLod < prevLod) {
-					//std::cout << "Higher\n";
-					worldX = (chunkX * 64) + (localX * lodDifference);
-					worldY *= lodDifference; // Assuming vertical scaling also follows LOD
-					worldZ = (chunkZ * 64) + (localZ * lodDifference);
-				}
-				// If currentLod is lower (e.g., LOD 1), scale the coordinates down (divide)
-				else if (currentLod > prevLod) {
-					//std::cout << "Lower\n";
-					worldX = (chunkX * 64) + (localX / lodDifference);
-					worldY /= lodDifference; // Assuming vertical scaling also follows LOD
-					worldZ = (chunkZ * 64) + (localZ / lodDifference);
-				}
-
-				return it->second->getBlockAt(worldX, worldY, worldZ, false, boundaryCheck, face, prevLod, false);
+			// If currentLod is higher (e.g., LOD 0), scale the coordinates up (multiply)
+			if (currentLod < prevLod) {
+				worldX = (chunkX * CHUNK_WIDTH) + (localX * lodDifference);
+				worldY *= lodDifference;
+				worldZ = (chunkZ * CHUNK_DEPTH) + (localZ * lodDifference);
 			}
-			else {
-				return it->second->getBlockAt(worldX, worldY, worldZ, false, boundaryCheck, face, prevLod, false);
+			// If currentLod is lower (e.g., LOD 1), scale the coordinates down (divide)
+			else if (currentLod > prevLod) {
+				worldX = (chunkX * CHUNK_WIDTH) + (localX / lodDifference);
+				worldY /= lodDifference;
+				worldZ = (chunkZ * CHUNK_DEPTH) + (localZ / lodDifference);
 			}
+
+			return it->second->getBlockAt(worldX, worldY, worldZ, false, boundaryCheck, face, prevLod, false);
 		}
 		else {
-			if (fromSelf) {
-				// Insert a new chunk safely using std::make_unique
-				auto newChunk = std::make_unique<Chunk>();
-				newChunk->setChunkCoords(key.first, key.second);
-				newChunk->setProcGenReference(proceduralAlgorithm);
-				newChunk->setWorldReference(this);
-				newChunk->generateChunk(calculateLevelOfDetail(key));
+			return it->second->getBlockAt(worldX, worldY, worldZ, false, boundaryCheck, face, prevLod, false);
+		}
+	}
+	else {
+		if (fromSelf) {
+			// Insert a new chunk safely using std::make_unique
+			auto newChunk = std::make_unique<Chunk>();
+			newChunk->setChunkCoords(key.first, key.second);
+			newChunk->setProcGenReference(proceduralAlgorithm);
+			newChunk->setWorldReference(this);
+			newChunk->setLod(calculateLevelOfDetail(key));
+			newChunk->generateChunk();
 
-				// Attempt to insert the new chunk
-				auto insertResult = worldMap.emplace(key, std::move(newChunk));
-				if (insertResult.second) { // Newly inserted
-					auto& insertedChunk = insertResult.first->second;
-					return insertedChunk->getBlockAt(worldX, worldY, worldZ, false, boundaryCheck, -1, prevLod, false);
-				}
-				else { // Already exists (unlikely due to emplace)
-					std::cout << "Chunk (" << key.first << ", " << key.second << ") already exists in getBlockAtGlobal.\n";
-					return it->second->getBlockAt(worldX, worldY, worldZ, false, boundaryCheck, -1, prevLod, false);
-				}
+			// Attempt to insert the new chunk
+			auto insertResult = worldMap.emplace(key, std::move(newChunk));
+			if (insertResult.second) { // Newly inserted
+				auto& insertedChunk = insertResult.first->second;
+				return insertedChunk->getBlockAt(worldX, worldY, worldZ, false, boundaryCheck, -1, prevLod, false);
+			}
+			else { // Already exists (unlikely due to emplace)
+				std::cout << "Chunk (" << key.first << ", " << key.second << ") already exists in getBlockAtGlobal.\n";
+				return it->second->getBlockAt(worldX, worldY, worldZ, false, boundaryCheck, -1, prevLod, false);
 			}
 		}
-
 		std::cerr << "getBlockAtGlobal - Chunk not found and fromSelf is false: (" << key.first << ", " << key.second << ")\n";
 		return 69; // Arbitrary error value
 	}
-	catch (const std::system_error& e) {
-		std::cerr << "System error in getBlockAtGlobal: " << e.what() << "\n";
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Exception in getBlockAtGlobal: " << e.what() << "\n";
-	}
-	catch (...) {
-		std::cerr << "Unknown error in getBlockAtGlobal.\n";
-	}
-
-	return 69; // Arbitrary error value if exception occurs
 }
 
 void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
@@ -390,8 +361,8 @@ void WorldManager::placeBlock(int worldX, int worldY, int worldZ, unsigned char 
 		auto it = worldMap.find(key);
 		if (it != worldMap.end()) {
 			// Calculate local coordinates
-			int localX = (((worldX % 64) + 64) % 64);
-			int localZ = (((worldZ % 64) + 64) % 64);
+			int localX = (((worldX % CHUNK_WIDTH) + CHUNK_WIDTH) % CHUNK_WIDTH);
+			int localZ = (((worldZ % CHUNK_DEPTH) + CHUNK_DEPTH) % CHUNK_DEPTH);
 			it->second->placeBlock(localX, worldY, localZ, blockToPlace);
 			updateMesh(key);
 			// Update neighboring chunks if necessary
@@ -419,7 +390,7 @@ void WorldManager::updateMesh(ChunkCoordPair key) {
 	std::lock_guard<std::recursive_mutex> renderLock(renderBuffersMtx, std::adopt_lock);
 	auto it = worldMap.find(key);
 	if (it != worldMap.end()) {
-		it->second->setWholeChunkMeshes();
+		it->second->generateChunkMeshes();
 		{
 			verticesByChunk.erase(key);
 			indicesByChunk.erase(key);
@@ -428,7 +399,7 @@ void WorldManager::updateMesh(ChunkCoordPair key) {
 			auto pairVec = it->second->getGreedyMeshByFaceType(i);
 			for (const auto& meshData : pairVec) {
 				for (const auto& quad : meshData.first) {
-					addQuadVerticesAndIndices(quad, key, i, meshData.second, it->second->getLod());
+					addQuadVerticesAndIndices(quad, key, i, meshData.second, it->second->getCurrentLod());
 				}
 			}
 		}
@@ -453,10 +424,10 @@ void WorldManager::addQuadVerticesAndIndices(std::pair<unsigned char, std::pair<
 	glm::vec3 topRight = calculatePosition(quad, 3, faceType, chunkCoords, offset, levelOfDetail);
 
 	// Calculate texture coordinates for each corner
-	glm::vec2 texCoordsBL = calculateTexCoords(quad, 0, levelOfDetail);
-	glm::vec2 texCoordsBR = calculateTexCoords(quad, 1, levelOfDetail);
-	glm::vec2 texCoordsTL = calculateTexCoords(quad, 2, levelOfDetail);
-	glm::vec2 texCoordsTR = calculateTexCoords(quad, 3, levelOfDetail);
+	glm::vec2 texCoordsBL = calculateTexCoords(quad, 0);
+	glm::vec2 texCoordsBR = calculateTexCoords(quad, 1);
+	glm::vec2 texCoordsTL = calculateTexCoords(quad, 2);
+	glm::vec2 texCoordsTR = calculateTexCoords(quad, 3);
 
 	// Define normal based on face type
 	int normal = faceType + 1;
@@ -496,43 +467,43 @@ void WorldManager::addQuadVerticesAndIndices(std::pair<unsigned char, std::pair<
 }
 
 glm::vec3 WorldManager::calculatePosition(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner, int faceType, ChunkCoordPair cxcz, int offset, int levelOfDetail) {
-	int positionMult = pow(2, levelOfDetail);
+	int blockResolution = 1 << levelOfDetail;
 
-	int startX = cxcz.first * 64;
-	int startZ = cxcz.second * 64;
-	int firstFirstConvert = q.second.first.first * positionMult;
-	int secondFirstConvert = q.second.second.first * positionMult;
-	int firstSecondConvert = q.second.first.second * positionMult;
-	int secondSecondConvert = q.second.second.second * positionMult;
-	int offsetConverted = offset * positionMult;
+	int startX = cxcz.first * CHUNK_WIDTH;
+	int startZ = cxcz.second * CHUNK_DEPTH;
+	int firstFirstConvert = q.second.first.first * blockResolution;
+	int secondFirstConvert = q.second.second.first * blockResolution;
+	int firstSecondConvert = q.second.first.second * blockResolution;
+	int secondSecondConvert = q.second.second.second * blockResolution;
+	int offsetConverted = offset * blockResolution;
 
 	int xOffset = startX + offsetConverted;
-	int xOffset1 = xOffset + positionMult;
+	int xOffset1 = xOffset + blockResolution;
 
 	int yOffset = offsetConverted;
-	int yOffset1 = yOffset + positionMult;
+	int yOffset1 = yOffset + blockResolution;
 
 	int zOffset = startZ + offsetConverted;
-	int zOffset1 = zOffset + positionMult;
+	int zOffset1 = zOffset + blockResolution;
 
 	// x face variables
 	int xy = firstFirstConvert;
-	int xy1 = firstSecondConvert + positionMult;
+	int xy1 = firstSecondConvert + blockResolution;
 	int xz = startZ + secondFirstConvert;
-	int xz1 = startZ + secondSecondConvert + positionMult;
+	int xz1 = startZ + secondSecondConvert + blockResolution;
 
 	// y face variables
 
 	int yx = startX + secondFirstConvert;
-	int yx1 = startX + secondSecondConvert + positionMult;
+	int yx1 = startX + secondSecondConvert + blockResolution;
 	int yz = startZ + firstFirstConvert;
-	int yz1 = startZ + firstSecondConvert + positionMult;
+	int yz1 = startZ + firstSecondConvert + blockResolution;
 
 	// z face variables
 	int zx = startX + secondFirstConvert;
-	int zx1 = startX + secondSecondConvert + positionMult;
+	int zx1 = startX + secondSecondConvert + blockResolution;
 	int zy = firstFirstConvert;
-	int zy1 = firstSecondConvert + positionMult;
+	int zy1 = firstSecondConvert + blockResolution;
 
 	switch (faceType) {
 	case 0:
@@ -607,8 +578,7 @@ glm::vec3 WorldManager::calculatePosition(std::pair<unsigned char, std::pair<std
 	}
 }
 
-glm::vec2 WorldManager::calculateTexCoords(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner, int levelOfDetail) {
-	int positionMult = pow(2, levelOfDetail);
+glm::vec2 WorldManager::calculateTexCoords(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner) {
 	switch (corner) {
 	case 0:
 		return glm::vec2(0.0f, 0.0f);

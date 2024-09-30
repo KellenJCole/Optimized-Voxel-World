@@ -1,7 +1,7 @@
 #include "h/Rendering/Renderer.h"
 #include "h/Rendering/GLErrorCatcher.h"
 
-Renderer::Renderer() : /*framebuffer(0), textureColorBuffer(0), rbo(0), quadVAO(0), quadVBO(0),*/ width(1600), height(900) {
+Renderer::Renderer() : width(1600), height(900) {
  
 }
 
@@ -20,7 +20,7 @@ bool Renderer::initialize() {
 
     setupVertexAttributes();
 
-    glfwWindowHint(GLFW_SAMPLES, 16);
+    glfwWindowHint(GLFW_SAMPLES, 4);
     glEnable(GL_MULTISAMPLE);
     
     return true;

@@ -19,45 +19,59 @@ enum BlockFace {
 class WorldManager;
 class Chunk {
 public:
-	// Setup
+	// Constructor
 	Chunk();
-	void generateChunk(int detailLvl);
+
+	// Setters
 	void setWorldReference(WorldManager* wm);
 	void setProcGenReference(ProcGen* pg);
-	void unload();
-
-	bool generated();
-
-	// Coordinate functions
+	void setLod(int detailLvl);
 	void setChunkCoords(int cx, int cz);
+
+	// Getters
+	std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> getGreedyMeshByFaceType(int faceType);
 	int getChunkX() { return chunkX; }
 	int getChunkZ() { return chunkZ; }
-	void setWholeChunkMeshes();
-	std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> getGreedyMeshByFaceType(int faceType);
+	int getCurrentLod();
+	bool getProcGenGenerationStatus(int detailLvl);
 	int getBlockAt(int worldX, int worldY, int worldZ, bool boundaryCall, bool calledFromGlobal, int face, int prevLod, bool recursion);
+
+	// Procedurally generate chunk and form meshes
+	void generateChunk();
+	void generateChunkMeshes();
+
+	// Chunk modification
 	void breakBlock(int localX, int localY, int localZ);
 	void placeBlock(int localX, int localY, int localZ, unsigned char blockToPlace);
-	int getLod();
+
+	// Switch LOD
+	bool convertLOD(int newLod);
+
+	// Clear VisByFaceType (might need to do other things, this should be thought about harder)
+	void unload();
+
 	~Chunk();
 private:
-	ProcGen* proceduralAlgorithm;
+	// Helpers
 	int convert3DCoordinatesToFlatIndex(int x, int y, int z);
 	glm::ivec3 convertFlatIndexTo3DCoordinates(int flatIndex);
-	void greedyMesh();
-	unsigned char checkNeighbors(int blockIndex); // Returns a bitmask representing which faces are visible and which are not
 	int convertWorldCoordToChunkCoord(int worldCoord);
-	int detailLevel;
-	/*
-	For LODS
-	At detail level 0, each block is represented as is, at 1x1x1 scale
-	At detail level 1, average block of each 2x2x2 chunk of blocks is averaged to form one big block
-	*/
 
+	unsigned char checkNeighbors(int blockIndex); // Returns a bitmask representing which faces are visible and which are not
+	void greedyMesh();
+
+	ProcGen* proceduralAlgorithm;
 	GreedyAlgorithm ga;
-	std::vector<unsigned char> chunk; // delete this upon unload
+	std::map<int, std::vector<unsigned char>> chunkLodMap; // delete this upon unload
 	std::map<BlockFace, std::vector<unsigned int>> visByFaceType; // keep before greedy meshing
-	int chunkX, chunkZ;
 	WorldManager* world;
-	bool hasBeenGenerated;
 	BlockFace iFaces[6];
+
+
+	// Basic variables
+	int detailLevel;
+	int blockResolution; // 1 >> detailLevel
+	int chunkX, chunkZ;
+	bool hasBeenGenerated[7];
+	bool altered;// Keep track of whether the chunk has had modifications made to it (is not the same as when it was procedurally generated) for saving purposes
 };

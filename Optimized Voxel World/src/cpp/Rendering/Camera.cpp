@@ -12,7 +12,7 @@ Camera::Camera(float inputSensitivity)
 	firstMouse(true),
 	sensitivity(inputSensitivity)
 {
-	projection = glm::perspective(glm::radians(70.f), 1600.0f / 900.0f, 0.1f, 20000.0f);
+	projection = glm::perspective(glm::radians(90.f), 1600.0f / 900.0f, 0.1f, 20000.0f);
 	view = glm::mat4(1.0f);
 	updateCameraVectors(); 
 	mode = false; // gravity on 

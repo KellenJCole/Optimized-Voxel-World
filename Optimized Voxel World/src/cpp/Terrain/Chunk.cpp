@@ -7,70 +7,72 @@
 #define CHUNK_DEPTH 64
 #define CHUNK_HEIGHT 256
 
-Chunk::Chunk() {
-	srand(time(NULL));
+Chunk::Chunk() :
+	chunkX(0),
+	chunkZ(0),
+	detailLevel(0),
+	altered(false),
+	blockResolution(0)
+{
 	iFaces[0] = NEG_X;
 	iFaces[1] = POS_X;
 	iFaces[2] = NEG_Y;
 	iFaces[3] = POS_Y;
 	iFaces[4] = NEG_Z;
 	iFaces[5] = POS_Z;
-	hasBeenGenerated = false;
-	detailLevel = 0;
+
+	for (int index = 0; index < 7; index++)
+		hasBeenGenerated[index] = false;
 }
 
-void Chunk::setProcGenReference(ProcGen* pg) {
-	proceduralAlgorithm = pg;
-}
-
-void Chunk::generateChunk(int detailLvl) {
-	detailLevel = detailLvl;
+void Chunk::generateChunk() {
 
 	switch (detailLevel) {
 	case 0:
-		chunk.resize(1048576, 0);
+		chunkLodMap[0].resize(1048576, 0);
 		break;
 	case 1:
-		chunk.resize(131072, 0);
+		chunkLodMap[1].resize(131072, 0);
 		break;
 	case 2:
-		chunk.resize(16384, 0);
+		chunkLodMap[2].resize(16384, 0);
 		break;
 	case 3:
-		chunk.resize(2048, 0);
+		chunkLodMap[3].resize(2048, 0);
 		break;
 	case 4:
-		chunk.resize(256, 0);
+		chunkLodMap[4].resize(256, 0);
 		break;
 	case 5:
-		chunk.resize(32, 0);
+		chunkLodMap[5].resize(32, 0);
 		break;
 	case 6:
-		chunk.resize(4, 0);
+		chunkLodMap[6].resize(4, 0);
 		break;
 	default:
 		std::cerr << "Invalid detail level: " << detailLevel << ". Defaulting to 6.\n";
-		chunk.resize(4, 0);
+		chunkLodMap[6].resize(4, 0);
 		detailLevel = 6;
+		blockResolution = 64;
 		break;
 	}
 
-	proceduralAlgorithm->generateChunk(chunk, std::make_pair(chunkX, chunkZ), detailLevel);
+	proceduralAlgorithm->generateChunk(chunkLodMap[detailLevel], std::make_pair(chunkX, chunkZ), detailLevel);
 
-	hasBeenGenerated = true;
+	hasBeenGenerated[detailLevel] = true;
 }
 
-void Chunk::setWholeChunkMeshes() {
-	for (int i = 0; i < chunk.size(); i++) {
-		if (chunk[i] != 0) { // If the block is not air, continue
-			unsigned char neighbor_bitmask = checkNeighbors(i);
+void Chunk::generateChunkMeshes() { // Iterates through every face on every block, filling relevant vectors with face visibility status. Probably could be mega-optimized with SVOs
+	for (int blockIndex = 0; blockIndex < chunkLodMap[detailLevel].size(); blockIndex++) {
+		if (chunkLodMap[detailLevel][blockIndex] != 0) { // If the block is not air, continue
+			unsigned char neighbor_bitmask = checkNeighbors(blockIndex);
 			if (neighbor_bitmask != 0b000000) { // If at least one face of block is visible
-				if (neighbor_bitmask & NEG_X) visByFaceType[NEG_X].push_back(i);
-				if (neighbor_bitmask & POS_X) visByFaceType[POS_X].push_back(i);
-				if (neighbor_bitmask & NEG_Y) visByFaceType[NEG_Y].push_back(i);
-				if (neighbor_bitmask & POS_Y) visByFaceType[POS_Y].push_back(i);
-				if (neighbor_bitmask & NEG_Z) visByFaceType[NEG_Z].push_back(i);
-				if (neighbor_bitmask & POS_Z) visByFaceType[POS_Z].push_back(i);
+				if (neighbor_bitmask & NEG_X) visByFaceType[NEG_X].push_back(blockIndex);
+				if (neighbor_bitmask & POS_X) visByFaceType[POS_X].push_back(blockIndex);
+				if (neighbor_bitmask & NEG_Y) visByFaceType[NEG_Y].push_back(blockIndex);
+				if (neighbor_bitmask & POS_Y) visByFaceType[POS_Y].push_back(blockIndex);
+				if (neighbor_bitmask & NEG_Z) visByFaceType[NEG_Z].push_back(blockIndex);
+				if (neighbor_bitmask & POS_Z) visByFaceType[POS_Z].push_back(blockIndex);
 			}
 		}
 	}
@@ -86,8 +88,7 @@ unsigned char Chunk::checkNeighbors(int blockIndex) {
 	coords.x += chunkX * CHUNK_WIDTH;
 	coords.z += chunkZ * CHUNK_DEPTH;
 
-	int positionMult = pow(2, detailLevel);
-	int resolution = 64 / positionMult;
+	int resolution = 64 / blockResolution;
 
 	bool masksPerformed[6] = { false, false, false, false, false, false };
 	for (int i = 0; i < 6; i++) {
@@ -139,19 +140,9 @@ unsigned char Chunk::checkNeighbors(int blockIndex) {
 	return faceVisibilityBitmask;
 }
 
-void Chunk::setWorldReference(WorldManager* wm) {
-	world = wm;
-}
-
-int Chunk::convertWorldCoordToChunkCoord(int worldCoord) {
-	int chunkCoord = (worldCoord >= 0) ? (worldCoord / 64) : ((worldCoord - 63) / 64);
-	return chunkCoord;
-}
-
 int Chunk::getBlockAt(int worldX, int worldY, int worldZ, bool boundaryCall, bool calledFromGlobal, int face, int prevLod, bool recursion) {
-	int positionMult = 1 << detailLevel;
-	int resolutionXZ = 64 / positionMult;
-	int resolutionY = 256 / positionMult;
+	int resolutionXZ = 64 / blockResolution;
+	int resolutionY = 256 / blockResolution;
 	int lodDifference = pow(2, abs(prevLod - detailLevel));
 
 	int localX = (((worldX % 64) + 64) % 64);
@@ -173,24 +164,24 @@ int Chunk::getBlockAt(int worldX, int worldY, int worldZ, bool boundaryCall, boo
 	int tempX = localX;
 	int tempZ = localZ;
 	if (localX / 2 >= resolutionXZ) {
-		localX /= pow(2, detailLevel - 1);
+		localX /= 1 << (detailLevel - 1);
 	}
 	else if (localX >= resolutionXZ) {
 		localX /= lodDifference;
 	}
 	if (localZ / 2 >= resolutionXZ) {
-		localZ /= pow(2, detailLevel - 1);
+		localZ /= 1 << (detailLevel - 1);
 	}
 	else if (localZ >= resolutionXZ) {
 		localZ /= lodDifference;
 	}
 
-	worldX = cx * 64 + localX;
+	worldX = cx * CHUNK_WIDTH + localX;
 	worldY = localY;
-	worldZ = cz * 64 + localZ;
+	worldZ = cz * CHUNK_DEPTH + localZ;
 
 
-	if (worldY >= CHUNK_HEIGHT / positionMult) {
+	if (worldY >= CHUNK_HEIGHT / blockResolution) {
 		return 0;
 	}
 	else if (worldY < 0) {
@@ -199,21 +190,23 @@ int Chunk::getBlockAt(int worldX, int worldY, int worldZ, bool boundaryCall, boo
 
 	int flatIndex = convert3DCoordinatesToFlatIndex(localX, localY, localZ);
 
-	int maxIndex = 1048638 / (positionMult * positionMult * positionMult);
+	int blockResolutionCubed = blockResolution * blockResolution * blockResolution;
+
+	int maxIndex = 1048575 / blockResolutionCubed;
 
 	if (prevLod != detailLevel && face != -1 && prevLod > detailLevel && !recursion) {
 		int blocks[4];
-		blocks[0] = static_cast<int>(chunk[flatIndex]);
+		blocks[0] = static_cast<int>(chunkLodMap[detailLevel][flatIndex]);
 		if (face == 0 || face == 1) { // X
-			blocks[1] = static_cast<int>(chunk[convert3DCoordinatesToFlatIndex(localX + 1, localY, localZ)]);
-			blocks[2] = static_cast<int>(chunk[convert3DCoordinatesToFlatIndex(localX, localY + 1, localZ)]);
-			blocks[3] = static_cast<int>(chunk[convert3DCoordinatesToFlatIndex(localX + 1, localY + 1, localZ)]);
+			blocks[1] = static_cast<int>(chunkLodMap[detailLevel][convert3DCoordinatesToFlatIndex(localX + 1, localY, localZ)]);
+			blocks[2] = static_cast<int>(chunkLodMap[detailLevel][convert3DCoordinatesToFlatIndex(localX, localY + 1, localZ)]);
+			blocks[3] = static_cast<int>(chunkLodMap[detailLevel][convert3DCoordinatesToFlatIndex(localX + 1, localY + 1, localZ)]);
 
 		}
 		else if (face == 4 || face == 5) { // Z
-			blocks[1] = static_cast<int>(chunk[convert3DCoordinatesToFlatIndex(localX, localY + 1, localZ)]);
-			blocks[2] = static_cast<int>(chunk[convert3DCoordinatesToFlatIndex(localX, localY, localZ + 1)]);;
-			blocks[3] = static_cast<int>(chunk[convert3DCoordinatesToFlatIndex(localX, localY + 1, localZ + 1)]);
+			blocks[1] = static_cast<int>(chunkLodMap[detailLevel][convert3DCoordinatesToFlatIndex(localX, localY + 1, localZ)]);
+			blocks[2] = static_cast<int>(chunkLodMap[detailLevel][convert3DCoordinatesToFlatIndex(localX, localY, localZ + 1)]);;
+			blocks[3] = static_cast<int>(chunkLodMap[detailLevel][convert3DCoordinatesToFlatIndex(localX, localY + 1, localZ + 1)]);
 		}
 		for (int i = 0; i < 4; i++) {
 			if (blocks[i] == 0) {
@@ -223,26 +216,72 @@ int Chunk::getBlockAt(int worldX, int worldY, int worldZ, bool boundaryCall, boo
 		return blocks[0];
 	}
 
-	if (flatIndex >= 1048638 / (int)(pow(positionMult, 3))) {
-		std::cout << "Flatindex was " << flatIndex << " with a max of " << 1048638 / (int)(pow(positionMult, 3)) << "\n";
+	if (flatIndex > maxIndex) {
+		std::cout << "Flatindex was " << flatIndex << " with a max of " << maxIndex << "\n";
 		return 69;
 	}
-	return static_cast<int>(chunk[flatIndex]);
+	return static_cast<int>(chunkLodMap[detailLevel][flatIndex]);
+}
+
+bool Chunk::convertLOD(int newLod) {
+	if (chunkLodMap.find(newLod) != chunkLodMap.end()) { // LOD here already exists
+
+	}
+}
+
+void Chunk::setProcGenReference(ProcGen* pg) {
+	proceduralAlgorithm = pg;
+}
+
+void Chunk::setWorldReference(WorldManager* wm) {
+	world = wm;
+}
+
+void Chunk::setChunkCoords(int cx, int cz) {
+	chunkX = cx;
+	chunkZ = cz;
+}
+
+void Chunk::setLod(int detailLvl) {
+	detailLevel = detailLvl;
+	blockResolution = 1 << detailLevel;
+}
+
+int Chunk::getCurrentLod() {
+	return detailLevel;
+}
+
+bool Chunk::getProcGenGenerationStatus(int detailLvl) {
+	return hasBeenGenerated[detailLvl];
+}
+
+void Chunk::greedyMesh() {
+	ga.populatePlanes(visByFaceType, chunkLodMap[detailLevel], detailLevel);
+	for (int i = 0; i < 6; i++) ga.firstPassOn(iFaces[i]);
+}
+
+void Chunk::breakBlock(int localX, int localY, int localZ) {
+	int flatIndex = convert3DCoordinatesToFlatIndex(localX, localY, localZ);
+	chunkLodMap[detailLevel][flatIndex] = 0;
+}
+
+void Chunk::placeBlock(int localX, int localY, int localZ, unsigned char blockToPlace) {
+	int flatIndex = convert3DCoordinatesToFlatIndex(localX, localY, localZ);
+	chunkLodMap[detailLevel][flatIndex] = blockToPlace;
 }
 
 int Chunk::convert3DCoordinatesToFlatIndex(int x, int y, int z) {
-	int positionMult = pow(2, detailLevel);
-	int width = CHUNK_WIDTH / positionMult;
-	int depth = CHUNK_DEPTH / positionMult;
-	int height = CHUNK_HEIGHT / positionMult;
+	int width = CHUNK_WIDTH / blockResolution;
+	int depth = CHUNK_DEPTH / blockResolution;
+	int height = CHUNK_HEIGHT / blockResolution;
 
 	return x + (z * width) + (y * width * depth);
 }
 
 glm::ivec3 Chunk::convertFlatIndexTo3DCoordinates(int flatIndex) {
-	int width = CHUNK_WIDTH / pow(2, detailLevel);
-	int depth = CHUNK_DEPTH / pow(2, detailLevel);
-	int height = CHUNK_HEIGHT / pow(2, detailLevel);
+	int width = CHUNK_WIDTH / blockResolution;
+	int depth = CHUNK_DEPTH / blockResolution;
+	int height = CHUNK_HEIGHT / blockResolution;
 
 	glm::ivec3 returnVec;
 	returnVec.y = flatIndex / (width * depth);
@@ -253,15 +292,13 @@ glm::ivec3 Chunk::convertFlatIndexTo3DCoordinates(int flatIndex) {
 	return returnVec;
 }
 
-
-void Chunk::setChunkCoords(int cx, int cz) {
-	chunkX = cx;
-	chunkZ = cz;
+int Chunk::convertWorldCoordToChunkCoord(int worldCoord) {
+	int chunkCoord = (worldCoord >= 0) ? (worldCoord / 64) : ((worldCoord - 63) / 64);
+	return chunkCoord;
 }
 
-void Chunk::greedyMesh() {
-	ga.populatePlanes(visByFaceType, chunk, detailLevel);
-	for (int i = 0; i < 6; i++) ga.firstPassOn(iFaces[i]);
+std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> Chunk::getGreedyMeshByFaceType(int faceType) {
+	return ga.getAllGreedyGraphs(faceType);
 }
 
 void Chunk::unload() {
@@ -269,30 +306,8 @@ void Chunk::unload() {
 	ga.unload();
 }
 
-std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> Chunk::getGreedyMeshByFaceType(int faceType) {
-	return ga.getAllGreedyGraphs(faceType);
-}
-
-void Chunk::breakBlock(int localX, int localY, int localZ) {
-	int flatIndex = convert3DCoordinatesToFlatIndex(localX, localY, localZ);
-	chunk[flatIndex] = 0;
-}
-
-void Chunk::placeBlock(int localX, int localY, int localZ, unsigned char blockToPlace) {
-	int flatIndex = convert3DCoordinatesToFlatIndex(localX, localY, localZ);
-	chunk[flatIndex] = blockToPlace;
-}
-
-int Chunk::getLod() {
-	return detailLevel;
-}
-
-bool Chunk::generated() {
-	return hasBeenGenerated;
-}
-
 Chunk::~Chunk() {
 	std::vector<unsigned char> temp;
-	chunk.swap(temp);
+	chunkLodMap[detailLevel].swap(temp);
 }
 

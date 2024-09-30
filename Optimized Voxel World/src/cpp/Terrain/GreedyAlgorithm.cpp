@@ -118,11 +118,11 @@ void GreedyAlgorithm::assignCoordinates(BlockFace face, int unknownCoord1, int u
 }
 
 void GreedyAlgorithm::populatePlanes(std::map<BlockFace, std::vector<unsigned int>>& vb, std::vector<unsigned char>& c, int levelOfDetail) {
-	int positionMult = pow(2, levelOfDetail);
+	int blockResolution = 1 << levelOfDetail;
 
-	int width = CHUNK_WIDTH / positionMult;
-	int depth = CHUNK_DEPTH / positionMult;
-	int height = CHUNK_HEIGHT / positionMult;
+	int width = CHUNK_WIDTH / blockResolution;
+	int depth = CHUNK_DEPTH / blockResolution;
+	int height = CHUNK_HEIGHT / blockResolution;
 
 	for (const auto& blockLocation : vb) {
 		BlockFace face = blockLocation.first;
