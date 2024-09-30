@@ -47,13 +47,28 @@ private:
 	int fps;
 	bool renderDebug;
 	bool imGuiCursor;
+	float fpsUpdateTime;
 	std::map<GLuint, bool> keyStates;
 	std::map<GLuint, bool> lastKeyStates;
 	std::map<GLuint, bool> playerKeyStates;
-	static const GLuint engineKeys[6];
+	static const GLuint engineKeys[7];
 	static const GLuint playerKeys[6];
 
 	int renderRadius;
 
 	float swapRenderMethodCooldown;
+
+	// Post Processing
+	GLuint framebuffer;
+	GLuint textureColorBuffer;
+	GLuint rbo;
+	Shader postProcessingShader;
+	GLuint quadVAO, quadVBO;
+	bool usePostProcessing;
+
+	// Helper
+	bool setupFramebuffer(int width, int height);
+	void setupPostProcessingQuad();
+
+	unsigned int windowWidth, windowHeight;
 };

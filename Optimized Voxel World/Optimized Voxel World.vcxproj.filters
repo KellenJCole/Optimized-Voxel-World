@@ -249,6 +249,7 @@
     <None Include="src\res\shaders\UserInterface.shader" />
     <None Include="src\h\Dear ImGui\imgui.natstepfilter" />
     <None Include="src\res\shaders\Transparent.shader" />
+    <None Include="src\res\shaders\PostProcessingArtifact.shader" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="src\res\textures\User Interface\crosshair.png">

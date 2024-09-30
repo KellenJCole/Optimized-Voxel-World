@@ -30,7 +30,7 @@ std::vector<std::pair<int, int>> ChunkLoader::getLoadList(int chunkX, int chunkZ
 		// Compare squared distances
 		return distSquaredLeft < distSquaredRight;
 		});
-
+	
 	return loadList;
 
 }

@@ -1,9 +1,10 @@
 #include "h/Terrain/GreedyAlgorithm.h"
 #include <algorithm>
 #include <iostream>
-#define CHUNK_WIDTH 16
+
+#define CHUNK_WIDTH 64
 #define CHUNK_HEIGHT 256
-#define CHUNK_DEPTH 16
+#define CHUNK_DEPTH 64
 
 enum BlockFace {
 	NEG_X = 1 << 0, // 0b000001
@@ -30,7 +31,6 @@ void GreedyAlgorithm::firstPassOn(BlockFace f) {
 	case POS_Z: greedyGraphIndex = 5; break;
 	}
 
-
 	for (auto& p : planes[f]) {
 		std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>> meshesForThisFace;
 		auto& plane = p.second;
@@ -48,7 +48,7 @@ void GreedyAlgorithm::firstPassOn(BlockFace f) {
 					processed[firstAxis][++endSecond] = true;
 				}
 
-				// Expand vertically across columns (the previous comment was misleading)
+				// Expand vertically across columns
 				bool canExpand = true;
 				while (canExpand && endFirst + 1 < plane.size()) {
 					for (int checkSecond = startSecond; checkSecond <= endSecond; ++checkSecond) {
@@ -81,7 +81,7 @@ void GreedyAlgorithm::firstPassOn(BlockFace f) {
 				}
 				else {
 					blockType = blockType > 2 ? blockType + 1 : blockType;
-					meshesForThisFace.push_back({ blockType, {{startSecond, endSecond}, {startFirst, endFirst}} });
+					meshesForThisFace.push_back({ blockType, {{startSecond , endSecond}, {startFirst, endFirst}} });
 				}
 			}
 		}
@@ -92,38 +92,56 @@ void GreedyAlgorithm::firstPassOn(BlockFace f) {
 	planes[f].clear();
 }
 
-void GreedyAlgorithm::populatePlanes(std::map<BlockFace, std::vector<unsigned int>>& vb, std::vector<unsigned char>& c) {
+#include <iostream>
+
+void GreedyAlgorithm::assignCoordinates(BlockFace face, int unknownCoord1, int unknownCoord2, int unknownCoord3, int& x, int& y, int& z) {
+	switch (face) {
+	case NEG_X:
+	case POS_X:
+		x = unknownCoord3;
+		y = unknownCoord2;
+		z = unknownCoord1;
+		break;
+	case NEG_Y:
+	case POS_Y:
+		x = unknownCoord1;
+		y = unknownCoord3;
+		z = unknownCoord2;
+		break;
+	case NEG_Z:
+	case POS_Z:
+		x = unknownCoord2;
+		y = unknownCoord3;
+		z = unknownCoord1;
+		break;
+	}
+}
+
+void GreedyAlgorithm::populatePlanes(std::map<BlockFace, std::vector<unsigned int>>& vb, std::vector<unsigned char>& c, int levelOfDetail) {
+	int positionMult = pow(2, levelOfDetail);
+
+	int width = CHUNK_WIDTH / positionMult;
+	int depth = CHUNK_DEPTH / positionMult;
+	int height = CHUNK_HEIGHT / positionMult;
+
 	for (const auto& blockLocation : vb) {
 		BlockFace face = blockLocation.first;
 
 		for (auto location : blockLocation.second) {
+
+			int unknownCoord1 = location / (width * depth); // y
+			int remainder = location % (width * depth);
+			int unknownCoord2 = remainder / width; // z
+			int unknownCoord3 = remainder % width; // x
+
 			int x, y, z;
-			switch (face) {
-			case NEG_X:
-			case POS_X:
-				x = location & 0x0F;
-				y = (location & 0xFF) >> 4;
-				z = location >> 8;
-				break;
-			case NEG_Y:
-			case POS_Y:
-				x = location >> 8;
-				y = location & 0x0F;
-				z = (location & 0xFF) >> 4;
-				break;
-			case NEG_Z:
-			case POS_Z:
-				x = (location & 0xFF) >> 4;
-				y = location & 0x0F;
-				z = location >> 8;
-				break;
-			}
+			assignCoordinates(face, unknownCoord1, unknownCoord2, unknownCoord3, x, y, z);
 
 			unsigned char blockType = c[location];
 			if (blockType != 0) { // If not an air block
 				// Check if the plane has a vector here
-				auto& planeVec = planes[face]; // Reference to the vector of planes for this face
-				auto it = std::find_if(planeVec.begin(), planeVec.end(),
+			auto& planeVec = planes[face];
+			auto it = std::find_if(planeVec.begin(), planeVec.end(),
 					[x](const std::pair<int, std::vector<std::vector<unsigned char>>>& elem) { return elem.first == x; });
 
 				if (it == planeVec.end()) {
@@ -132,9 +150,9 @@ void GreedyAlgorithm::populatePlanes(std::map<BlockFace, std::vector<unsigned in
 					case NEG_X:
 					case POS_X:
 					case NEG_Z:
-					case POS_Z: newPlane.resize(CHUNK_WIDTH, std::vector<unsigned char>(CHUNK_HEIGHT, 0)); break;
+					case POS_Z: newPlane.resize(width, std::vector<unsigned char>(height, 0)); break;
 					case NEG_Y:
-					case POS_Y: newPlane.resize(CHUNK_WIDTH, std::vector<unsigned char>(CHUNK_DEPTH, 0)); break;
+					case POS_Y: newPlane.resize(width, std::vector<unsigned char>(depth, 0)); break;
 					}
 					planeVec.push_back({ x, newPlane });
 					it = std::prev(planeVec.end()); // Set iterator to newly added plane

@@ -12,12 +12,18 @@ VoxelEngine::VoxelEngine() :
     fps(0),
     renderDebug(false),
     imGuiCursor(false),
-    renderRadius(30) {
+    usePostProcessing(true),
+    renderRadius(40),
+    windowWidth(1600),
+    windowHeight(900) {
 
-    currChunkX = camera.getCameraPos().x / 16;
-    currChunkZ = camera.getCameraPos().z / 16;
+    currChunkX = (camera.getCameraPos().x < 0 ? camera.getCameraPos().x - 64 : camera.getCameraPos().x) / 64;
+    currChunkZ = (camera.getCameraPos().z < 0 ? camera.getCameraPos().z - 64 : camera.getCameraPos().z) / 64;
     lastChunkX = currChunkX;
     lastChunkZ = lastChunkZ;
+
+    fpsUpdateTime = .1;
+
 }
 
 bool VoxelEngine::initialize() {
@@ -69,6 +75,60 @@ bool VoxelEngine::initialize() {
     debugShader = Shader("src/res/shaders/Debug.shader");
     userInterfaceShader = Shader("src/res/shaders/UserInterface.shader");
 
+    // Setup Framebuffer
+    // Generate framebuffer
+    GLCall(glGenFramebuffers(1, &framebuffer));
+    GLCall(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer));
+
+    // Create a color attachment texture
+    GLCall(glGenTextures(1, &textureColorBuffer));
+    GLCall(glBindTexture(GL_TEXTURE_2D, textureColorBuffer));
+    GLCall(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowWidth, windowHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL));
+    GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+    GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+    GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+    GLCall(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0));
+
+    // Create a renderbuffer object for depth and stencil attachment
+    GLCall(glGenRenderbuffers(1, &rbo));
+    GLCall(glBindRenderbuffer(GL_RENDERBUFFER, rbo));
+    GLCall(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, windowWidth, windowHeight));
+    GLCall(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo));
+
+    // Check if framebuffer is complete
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        std::cerr << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+        return false;
+    }
+    GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0)); // Unbind framebuffer
+
+    // Load and compile the post-processing shader
+    postProcessingShader = Shader("src/res/shaders/PostProcessingArtifact.shader");
+
+    // Setup full-screen quad
+    float quadVertices[] = {
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
+
+    GLCall(glGenVertexArrays(1, &quadVAO));
+    GLCall(glGenBuffers(1, &quadVBO));
+    GLCall(glBindVertexArray(quadVAO));
+    GLCall(glBindBuffer(GL_ARRAY_BUFFER, quadVBO));
+    GLCall(glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW));
+    GLCall(glEnableVertexAttribArray(0));
+    GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0));
+    GLCall(glEnableVertexAttribArray(1));
+    GLCall(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float))));
+    GLCall(glBindVertexArray(0));
+
     debugShader.use();
     glm::mat4 projection = glm::ortho(0.0f, 1600.f, 0.0f, 900.f);
     debugShader.setUniform4fv("projection", projection);
@@ -87,8 +147,6 @@ bool VoxelEngine::initialize() {
         std::cout << "DebugUI failed initialization\n";
     }
 
-    std::cout << "VoxelEngine.initialize() successful\n";
-
     // Set up keyStates map for keeping track of if a button was pressed last frame or is currently released for toggle buttons
     
     keyStates[GLFW_KEY_F] = false; // Toggle polygon fill mode
@@ -97,6 +155,7 @@ bool VoxelEngine::initialize() {
     keyStates[GLFW_KEY_UP] = false; // Increase render distance
     keyStates[GLFW_KEY_DOWN] = false; // Decrease render distance
     keyStates[GLFW_KEY_ESCAPE] = false; // Switch cursor mode
+    keyStates[GLFW_KEY_P] = false; // Toggle Post-Processing Shader
 
     lastKeyStates = keyStates;
 
@@ -115,11 +174,13 @@ bool VoxelEngine::initialize() {
 
     proceduralGenerationGui.initialize(window, &proceduralGeneration);
 
+
+    worldManager.passWindowPointerToRenderer(window);
+
     return true;
 }
 
 void VoxelEngine::run() {
-    std::cout << "Entering Voxel Engine loop. ProcessInputs->Update->Render\n";
     worldManager.updateRenderChunks(0, 0, renderRadius, false);
 
     double timeAtLastFPSCheck = glfwGetTime();
@@ -130,10 +191,10 @@ void VoxelEngine::run() {
         lastFrame = currentTime;
 
         numberOfFrames++;
-        if (currentTime - timeAtLastFPSCheck >= 0.1) {
+        if (currentTime - timeAtLastFPSCheck >= fpsUpdateTime) {
             fps = numberOfFrames;
             numberOfFrames = 0;
-            timeAtLastFPSCheck += 0.1;
+            timeAtLastFPSCheck += fpsUpdateTime;
         }
 
         
@@ -147,7 +208,7 @@ void VoxelEngine::run() {
 void VoxelEngine::processInput() {
     float currFrame = glfwGetTime();
 
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 7; i++) {
         keyStates[engineKeys[i]] = (glfwGetKey(window, engineKeys[i]) == GLFW_PRESS) ? true : false;
     }
 
@@ -182,6 +243,9 @@ void VoxelEngine::processInput() {
         if (keyStates[GLFW_KEY_F] && !lastKeyStates[GLFW_KEY_F])                // F -> Toggle polygon line/fill
             worldManager.switchRenderMethod();
 
+        if (keyStates[GLFW_KEY_P] && !lastKeyStates[GLFW_KEY_P])                // F -> Toggle polygon line/fill
+            usePostProcessing = !usePostProcessing;
+
         if (keyStates[GLFW_KEY_G] && !lastKeyStates[GLFW_KEY_G])                // G -> Toggle gravity
             player.toggleGravity();
 
@@ -205,16 +269,19 @@ void VoxelEngine::processInput() {
 }
 
 void VoxelEngine::update() {
-    currChunkX = camera.getCameraPos().x / 16;
-    currChunkZ = camera.getCameraPos().z / 16;
+    int cameraPosX = floor(camera.getCameraPos().x);
+    int cameraPosZ = floor(camera.getCameraPos().z);
+    currChunkX = cameraPosX >= 0 ? cameraPosX / 64 : (cameraPosX - 63) / 64;
+    currChunkZ = cameraPosZ >= 0 ? cameraPosZ / 64 : (cameraPosZ - 63) / 64;
     
     worldManager.update();
 
-    bool updateTerrain = proceduralGenerationGui.shouldUpdate();
-    if (updateTerrain) {
+    bool pggUpdateTerrain = proceduralGenerationGui.shouldUpdate();
+    bool crossedChunkBorder = currChunkX != lastChunkX || currChunkZ != lastChunkZ;
+    if (pggUpdateTerrain) {
         worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, true);
     }
-    else if (currChunkX != lastChunkX || currChunkZ != lastChunkZ) {
+    else if (crossedChunkBorder) {
         worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
     }
 
@@ -225,8 +292,15 @@ void VoxelEngine::update() {
 }
 
 void VoxelEngine::render() {
+    if (usePostProcessing) {
+        GLCall(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer)); 
+    }
+    else {
+        GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    }
+
     GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-    GLCall(glClearColor(0.529f, 0.808f, 0.922f, 1.0f));
+    GLCall(glClearColor(0.529f, 0.808f, 0.922f, 0.2f));
     
 
     glm::vec3 viewPos = camera.getCameraPos();
@@ -239,19 +313,40 @@ void VoxelEngine::render() {
     proceduralGenerationGui.startLoop();
     worldManager.render();
 
+    if (usePostProcessing) {
+        GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+        GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));  // Clear the default framebuffer
+
+        postProcessingShader.use();
+
+        GLCall(glActiveTexture(GL_TEXTURE0));
+        GLCall(glBindTexture(GL_TEXTURE_2D, textureColorBuffer));
+        postProcessingShader.setUniform1i("screenTexture", 0);  // Set the texture unit to 0
+        GLCall(glBindVertexArray(quadVAO));
+        GLCall(glDrawArrays(GL_TRIANGLES, 0, 6));
+    }
+
+    // Disable depth testing before rendering the UI and debug text
+    GLCall(glDisable(GL_DEPTH_TEST));
+
+    // Re-enable blending for rendering text (if post-processing disables it)
+    GLCall(glEnable(GL_BLEND));
+    GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
     if (renderDebug) {
         glm::vec3 cameraPos = camera.getCameraPos();
 
         std::ostringstream stream;
-        stream << std::fixed << std::setprecision(3);
-        stream << fps * 10 << " fps\n"
-            << "World Coordinates: " << cameraPos.x << ", " << cameraPos.y - 1.8 << ", " << cameraPos.z;
+        stream << std::fixed << std::setprecision(0);
+        stream << fps * (1.f / fpsUpdateTime) << "\n";
 
         debugUI.renderText(debugShader, stream.str(), 10.0f, 870.0f, 0.8f, glm::vec3(0.0f, 0.5f, 0.5f));
     }
 
     userInterface.render(userInterfaceShader);
     
+    GLCall(glEnable(GL_DEPTH_TEST));
+
     proceduralGenerationGui.endLoop();
 
     glfwSwapBuffers(window);
@@ -259,7 +354,6 @@ void VoxelEngine::render() {
     glfwPollEvents();
 }
 
-// Handle window resizing
 void VoxelEngine::framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     GLCall(glViewport(0, 0, width, height));
 }
@@ -286,6 +380,6 @@ void VoxelEngine::processMouseInput(double xpos, double ypos) {
     }
 }
 
-const GLuint VoxelEngine::engineKeys[6] = { GLFW_KEY_F, GLFW_KEY_G, GLFW_KEY_I, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_ESCAPE };
+const GLuint VoxelEngine::engineKeys[7] = { GLFW_KEY_F, GLFW_KEY_G, GLFW_KEY_I, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_ESCAPE, GLFW_KEY_P };
 
 const GLuint VoxelEngine::playerKeys[6] = { GLFW_KEY_W, GLFW_KEY_A, GLFW_KEY_S, GLFW_KEY_D, GLFW_KEY_SPACE, GLFW_KEY_LEFT_SHIFT };

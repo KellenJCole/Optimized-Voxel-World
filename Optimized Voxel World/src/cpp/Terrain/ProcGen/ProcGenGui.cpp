@@ -6,10 +6,10 @@ ProcGenGui::ProcGenGui() {
 	update = false;
 	state.resize(21);
 
-	state[0] = 0.007;
-	state[1] = 0.058;
-	state[2] = 0.21;
-	state[3] = 0.67;
+	state[0] = 0.001;
+	state[1] = 0.002;
+	state[2] = 0.004;
+	state[3] = 0.008;
 
 	state[4] = 8;
 	state[5] = 6;
@@ -31,7 +31,7 @@ ProcGenGui::ProcGenGui() {
 	state[18] = 0.15;
 	state[19] = 0.1;
 
-	state[20] = 80;
+	state[20] = 40;
 }
 
 void ProcGenGui::initialize(GLFWwindow* w, ProcGen* pg) {

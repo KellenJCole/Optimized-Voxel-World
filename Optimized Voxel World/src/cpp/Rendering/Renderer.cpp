@@ -1,7 +1,7 @@
 #include "h/Rendering/Renderer.h"
 #include "h/Rendering/GLErrorCatcher.h"
 
-Renderer::Renderer() {
+Renderer::Renderer() : /*framebuffer(0), textureColorBuffer(0), rbo(0), quadVAO(0), quadVBO(0),*/ width(1600), height(900) {
  
 }
 
@@ -16,13 +16,13 @@ bool Renderer::initialize() {
     GLCall(glEnable(GL_CULL_FACE));
     GLCall(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
     gl_fill = true;
-    GLCall(glEnable(GL_FRAMEBUFFER_SRGB)); // Enable sRGB for gamma correction
+    GLCall(glEnable(GL_FRAMEBUFFER_SRGB));
 
     setupVertexAttributes();
 
     glfwWindowHint(GLFW_SAMPLES, 16);
     glEnable(GL_MULTISAMPLE);
-
+    
     return true;
 }
 
@@ -44,7 +44,10 @@ void Renderer::toggleFillLine() {
 
 
 void Renderer::render() {
+    std::lock_guard<std::mutex> lock(renderMtx);
+
     vertexArray.Bind();
+
     for (auto& coords : chunksBeingRendered) {
         if (chunkToVertexBuffer.find(coords) != chunkToVertexBuffer.end() && chunkToIndexBuffer.find(coords) != chunkToIndexBuffer.end()) {
             chunkToVertexBuffer[coords].Bind();
@@ -72,27 +75,49 @@ void Renderer::cleanup() {
 }
 
 void Renderer::updateVertexBuffer(const std::vector<Vertex>& vertices, std::pair<int, int> coords) {
+    if (vertices.empty()) {
+        std::cerr << "Error: Vertex data is empty for chunk: (" << coords.first << ", " << coords.second << ")\n";
+        return;
+    }
+
+    const void* data = vertices.data();
+    size_t dataSize = vertices.size() * sizeof(Vertex);
+
+    std::lock_guard<std::mutex> lock(renderMtx);
     auto it = chunkToVertexBuffer.find(coords);
     if (it == chunkToVertexBuffer.end()) {
-        chunkToVertexBuffer[coords].create(vertices.data(), vertices.size() * sizeof(Vertex));
+        chunkToVertexBuffer[coords].create(data, dataSize);  // Create the buffer if it doesn't exist
+        vertexArray.AddBuffer(chunkToVertexBuffer[coords], layout);
     }
     else {
-        it->second.update(vertices.data(), vertices.size() * sizeof(Vertex));
+        it->second.update(data, dataSize);  // Update the buffer if it exists
     }
 }
 
 void Renderer::updateIndexBuffer(const std::vector<unsigned int>& indices, std::pair<int, int> coords) {
+    if (indices.empty()) {
+        std::cerr << "Error: Index data is empty for chunk: (" << coords.first << ", " << coords.second << ")\n";
+        return;
+    }
+
+    const unsigned int* data = indices.data();
+    size_t dataSize = indices.size();
+
+    std::lock_guard<std::mutex> lock(renderMtx);
     bool bufferExists = chunkToIndexBuffer.find(coords) != chunkToIndexBuffer.end();
 
     if (!bufferExists) {
-        chunkToIndexBuffer[coords].create(indices.data(), indices.size());
+        chunkToIndexBuffer[coords].create(data, dataSize);  // Create the buffer if it doesn't exist
+        vertexArray.Bind();
+        chunkToIndexBuffer[coords].Bind();
     }
     else {
-        chunkToIndexBuffer[coords].update(indices.data(), indices.size());
+        chunkToIndexBuffer[coords].update(data, dataSize);  // Update the buffer if it exists
     }
 }
 
 void Renderer::eraseBuffers(const std::pair<int, int>& eraseKey) {
+    std::lock_guard<std::mutex> lock(renderMtx);
     if (chunkToVertexBuffer.find(eraseKey) != chunkToVertexBuffer.end()) {
         chunkToVertexBuffer[eraseKey].destroy();
         chunkToVertexBuffer.erase(eraseKey);
@@ -101,4 +126,9 @@ void Renderer::eraseBuffers(const std::pair<int, int>& eraseKey) {
         chunkToIndexBuffer[eraseKey].destroy();
         chunkToIndexBuffer.erase(eraseKey);
     }
+}
+
+void Renderer::setWindowPointer(GLFWwindow* w) {
+    window = w;
+    glfwGetWindowSize(window, &width, &height);
 }

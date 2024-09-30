@@ -13,6 +13,7 @@ bool VertexBuffer::isValid() {
 void VertexBuffer::create(const void* data, unsigned int size) {
 	GLCall(glGenBuffers(1, &vertexBuffer_id));
 	Bind();
+	m_count = size;
 	GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_DYNAMIC_DRAW));
 	Unbind();
 	valid = true;
@@ -46,4 +47,8 @@ void VertexBuffer::Unbind() const {
 
 VertexBuffer::~VertexBuffer() {
 	destroy();
+}
+
+unsigned int VertexBuffer::GetCount() {
+	return m_count;
 }

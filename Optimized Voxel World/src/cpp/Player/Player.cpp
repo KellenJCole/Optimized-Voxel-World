@@ -70,7 +70,7 @@ void Player::update(float deltaTime) {
 		currPos = camera->getCameraPos();
 		origPos = currPos;
 
-		// First handle horizontal collisions
+		// handle horizontal collisions
 		currPos.x += xVelocity * deltaTime;
 		currPos.z += zVelocity * deltaTime;
 
@@ -93,7 +93,7 @@ void Player::update(float deltaTime) {
 
 bool Player::checkForGravitationalCollision() {
 	glm::vec3 cameraPos = camera->getCameraPos();
-	cameraPos.y = floor(cameraPos.y - 1.8);
+	cameraPos.y = (float)floor(cameraPos.y - 1.8);
 	int minCheckX = floor(cameraPos.x - 0.3);
 	int minCheckZ = floor(cameraPos.z - 0.3);
 	int maxCheckX = floor(cameraPos.x + 0.3);
@@ -101,7 +101,7 @@ bool Player::checkForGravitationalCollision() {
 
 	for (int x = minCheckX; x <= maxCheckX; x++) {
 		for (int z = minCheckZ; z <= maxCheckZ; z++) {
-			unsigned char block = world->getBlockAtGlobal(x, cameraPos.y, z, false);
+			unsigned char block = world->getBlockAtGlobal(x, cameraPos.y, z, false, false, -1, -1);
 			if (block != 0 && block != 69) {
 				currentGravitationalCollision = true;
 				return true;
@@ -115,7 +115,7 @@ bool Player::checkForGravitationalCollision() {
 
 bool Player::checkHeadCollision() {
 	glm::vec3 cameraPos = camera->getCameraPos();
-	unsigned char block = world->getBlockAtGlobal(floor(cameraPos.x), floor(cameraPos.y + 0.1), floor(cameraPos.z), false);
+	unsigned char block = world->getBlockAtGlobal(floor(cameraPos.x), floor(cameraPos.y + 0.1), floor(cameraPos.z), false, false, -1, -1);
 	if (block != 0 && block != 69) {
 		return true;
 	}
@@ -135,32 +135,29 @@ bool Player::checkForHorizontalCollision() {
 	int yMin = floor(playerAABBmin.y);
 	int yMax = floor(playerAABBmax.y);
 
-	// Check for collision on the x-axis
 	for (int x = xMin; x <= xMax; x++) {
 		for (int y = yMin; y <= yMax; y++) {
-			if (world->getBlockAtGlobal(x, y, std::floor(camPos.z), false) != 0 &&
-				world->getBlockAtGlobal(x, y, std::floor(camPos.z), false) != 69) {
+			if (world->getBlockAtGlobal(x, y, std::floor(camPos.z), false, false, -1, -1) != 0 &&
+				world->getBlockAtGlobal(x, y, std::floor(camPos.z), false, false, -1, -1) != 69) {
 				return true;
 			}
 		}
 	}
 
-	// Check for collision on the z-axis
 	for (int z = zMin; z <= zMax; z++) {
 		for (int y = yMin; y <= yMax; y++) {
-			if (world->getBlockAtGlobal(std::floor(camPos.x), y, z, false) != 0 &&
-				world->getBlockAtGlobal(std::floor(camPos.x), y, z, false) != 69) {
+			if (world->getBlockAtGlobal(std::floor(camPos.x), y, z, false, false, -1, -1) != 0 &&
+				world->getBlockAtGlobal(std::floor(camPos.x), y, z, false, false, -1, -1) != 69) {
 				return true;
 			}
 		}
 	}
 
-	// Check for collision both axis
 	for (int x = xMin; x <= xMax; x++) {
 		for (int z = zMin; z <= zMax; z++) {
 			for (int y = yMin; y <= yMax; y++) {
-				if (world->getBlockAtGlobal(x, y, z, false) != 0 &&
-					world->getBlockAtGlobal(x, y, z, false) != 69) {
+				if (world->getBlockAtGlobal(x, y, z, false, false, -1, -1) != 0 &&
+					world->getBlockAtGlobal(x, y, z, false, false, -1, -1) != 69) {
 					return true;
 				}
 			}
@@ -170,7 +167,7 @@ bool Player::checkForHorizontalCollision() {
 	return false;
 }
 
-int signum(float x) { // Returns 1 if input is above 0, 0 if the number is 0, and -1 in all other cases
+int signum(float x) {
 	return x > 0 ? 1 : x < 0 ? -1 : 0;
 }
 
@@ -337,7 +334,7 @@ std::pair<glm::vec3, glm::vec3> Player::raycast(glm::vec3 origin, glm::vec3 dire
 
 	while (stepY > 0 ? y < 255 : y >= 0) {
 		if (y < 255 && y >= 0) {
-			if (world->getBlockAtGlobal(x, y, z, false) != 0 && world->getBlockAtGlobal(x, y, z, false) != 69) {
+			if (world->getBlockAtGlobal(x, y, z, false, false, -1, -1) != 0 && world->getBlockAtGlobal(x, y, z, false, false, -1, -1) != 69) {
 				if (y != 0) {
 					return { {x, y, z}, {face} };
 				}

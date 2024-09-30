@@ -10,69 +10,82 @@
 #include "h/Rendering/Camera.h"
 
 struct PairHash {
-	size_t operator()(const std::pair<int, int>& pair) const {
-		auto hash1 = std::hash<int>{}(pair.first);
-		auto hash2 = std::hash<int>{}(pair.second);
-		return hash1 ^ hash2;
-	}
+    size_t operator()(const std::pair<int, int>& pair) const {
+        auto hash1 = std::hash<int>{}(pair.first);
+        auto hash2 = std::hash<int>{}(pair.second);
+        return hash1 ^ (hash2 << 1);
+    }
 };
 
-
 using ChunkCoordPair = std::pair<int, int>;
+
 class WorldManager {
 public:
-	WorldManager();
-	bool initialize(ProcGen* pg);
-	void update();
-	void updateRenderChunks(int originX, int originZ, int renderRadius, bool unloadAll);
-	void render();
-	void cleanup();
-	void setCamAndShaderPointers(Shader* sha, Camera* cam);
-	int getBlockAtGlobal(int worldX, int worldY, int worldZ, bool fromSelf);
-	void switchRenderMethod();
-	void breakBlock(int worldX, int worldY, int worldZ);
-	void placeBlock(int worldX, int worldY, int worldZ, unsigned char blockToPlace);
+    WorldManager();
+    bool initialize(ProcGen* pg);
+    void update();
+    void updateRenderChunks(int originX, int originZ, int renderRadius, bool unloadAll);
+    void render();
+    void cleanup();
+    void setCamAndShaderPointers(Shader* sha, Camera* cam);
+    int getBlockAtGlobal(int worldX, int worldY, int worldZ, bool fromSelf, bool boundaryCheck, int prevLod, int face);
+    void switchRenderMethod();
+    void breakBlock(int worldX, int worldY, int worldZ);
+    void placeBlock(int worldX, int worldY, int worldZ, unsigned char blockToPlace);
+    void passWindowPointerToRenderer(GLFWwindow* window);
+
+    // Delete copy constructor and copy assignment operator
+    WorldManager(const WorldManager&) = delete;
+    WorldManager& operator=(const WorldManager&) = delete;
+
+    std::unordered_map<ChunkCoordPair, std::unique_ptr<Chunk>, PairHash> worldMap;
+
 private:
-	void addQuadVerticesAndIndices(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>> quad, ChunkCoordPair chunkCoords, int faceType, int offset);
-	void genMeshForSingleChunk(ChunkCoordPair key);
-	void markChunkReadyForRender(std::pair<int, int> key);
-	void updateMesh(ChunkCoordPair key);
+    void addQuadVerticesAndIndices(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>> quad, ChunkCoordPair chunkCoords, int faceType, int offset, int levelOfDetail);
+    void genMeshForSingleChunk(ChunkCoordPair key);
+    void markChunkReadyForRender(std::pair<int, int> key);
+    void updateMesh(ChunkCoordPair key);
 
-	void loadChunksAsync(const std::vector<std::pair<int, int>>& loadChunks);
-	void unloadChunks(const std::vector<std::pair<int, int>>& loadChunks, bool all);
+    void loadChunksAsync(const std::vector<std::pair<int, int>>& loadChunks);
+    void unloadChunks(const std::vector<std::pair<int, int>>& loadChunks, bool all);
 
-	void updateRenderBuffers();
+    void updateRenderBuffers();
 
-	glm::vec3 calculatePosition(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner, int faceType, ChunkCoordPair cxcz, int offset);
-	glm::vec2 calculateTexCoords(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner);
+    int calculateLevelOfDetail(ChunkCoordPair ccp);
 
-	Renderer renderer;
-	ChunkLoader chunkLoader;
-	TextureArray blockTextureArray;
+    int convertWorldCoordToChunkCoord(int worldCoord);
 
-	std::unordered_map<ChunkCoordPair, Chunk, PairHash> worldMap;
-	std::unordered_map<ChunkCoordPair, std::vector<Vertex>, PairHash> verticesByChunk;
-	std::unordered_map<ChunkCoordPair, std::vector<unsigned int>, PairHash> indicesByChunk;
-	std::unordered_set<ChunkCoordPair,  PairHash> preparedChunks;
+    glm::vec3 calculatePosition(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner, int faceType, ChunkCoordPair cxcz, int offset, int levelOfDetail);
+    glm::vec2 calculateTexCoords(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner, int levelOfDetail);
 
-	// SHADER CAMERA LIGHTS
-	Shader* shader;
-	Camera* camera;
-	glm::vec3 lightPos;
-	glm::vec3 lightColor;
+    Renderer renderer;
+    ChunkLoader chunkLoader;
+    TextureArray blockTextureArray;
 
-	// MULTITHREAD
-	std::future<void> loadFuture;
-	std::mutex mtx;
-	std::mutex chunkUpdateMtx;
-	std::condition_variable chunkCondition;
+    // Store unique_ptr to manage Chunk lifetimes
+    std::unordered_map<ChunkCoordPair, std::vector<Vertex>, PairHash> verticesByChunk;
+    std::unordered_map<ChunkCoordPair, std::vector<unsigned int>, PairHash> indicesByChunk;
+    std::unordered_set<ChunkCoordPair, PairHash> preparedChunks;
 
-	float lastFrustumCheck;
-	std::atomic<bool> updatedRenderChunks;
-	std::atomic<bool> chunkUpdate;
-	int renderRadius;
-	std::atomic<bool> stopAsync;
+    // SHADER CAMERA LIGHTS
+    Shader* shader;
+    Camera* camera;
+    glm::vec3 lightPos;
+    glm::vec3 lightColor;
 
-	ProcGen* proceduralAlgorithm;
+    // MULTITHREAD
+    std::future<void> loadFuture;
+    std::mutex preparedChunksMtx;
+    std::recursive_mutex chunkUpdateMtx;
+    std::recursive_mutex worldMapMtx;
+    std::recursive_mutex renderBuffersMtx;
+    std::condition_variable chunkCondition;
 
+    float lastFrustumCheck;
+    std::atomic<bool> updatedRenderChunks;
+    std::atomic<bool> chunkUpdate;
+    int renderRadius;
+    std::atomic<bool> stopAsync;
+
+    ProcGen* proceduralAlgorithm;
 };

@@ -7,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <h/glm/glm.hpp>
+#include <mutex>
 
 struct Vertex {
     glm::vec3 position;
@@ -26,12 +27,15 @@ public:
     void updateVertexBuffer(const std::vector<Vertex>& vertices, std::pair<int, int> coords);
     void updateIndexBuffer(const std::vector<unsigned int>& indices, std::pair<int, int> coords);
     void eraseBuffers(const std::pair<int, int>& eraseKey);
+    void setWindowPointer(GLFWwindow* w);
 private:
+    GLFWwindow* window;
+    int width, height;
     VertexArray vertexArray;
     VertexBufferLayout layout;
     std::map<std::pair<int, int>, VertexBuffer> chunkToVertexBuffer;
     std::map<std::pair<int, int>, IndexBuffer> chunkToIndexBuffer;
-
+    std::mutex renderMtx;
     std::vector<std::pair<int, int>> chunksBeingRendered;
 
     void setupVertexAttributes();
