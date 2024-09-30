@@ -6,6 +6,7 @@ A simple Minecraft clone featuring
 -Infinite terrain  
 -Basic lighting  
 -View frustum culling   
+-Level of detail    
   
 Credits  
 Textures used are obtained from Faithful: https://faithfulpack.net  
