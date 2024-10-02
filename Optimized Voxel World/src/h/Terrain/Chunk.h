@@ -6,6 +6,7 @@
 #include <h/glm/glm.hpp>
 #include "h/Terrain/ProcGen/ProcGen.h"
 #include <shared_mutex>
+#include <stack>
 
 enum BlockFace {
 	NEG_X = 1 << 0, // 0b000001
@@ -35,7 +36,7 @@ public:
 	int getCurrentLod();
 	bool getProcGenGenerationStatus(int detailLvl);
 	int getBlockAt(int worldX, int worldY, int worldZ, bool boundaryCall, bool calledFromGlobal, int face, int prevLod, bool recursion);
-
+	std::vector<unsigned char> getCurrChunkVec();
 	// Procedurally generate chunk and form meshes
 	void generateChunk();
 	void generateChunkMeshes();
@@ -45,7 +46,7 @@ public:
 	void placeBlock(int localX, int localY, int localZ, unsigned char blockToPlace);
 
 	// Switch LOD
-	bool convertLOD(int newLod);
+	void convertLOD(int newLod);
 
 	// Clear VisByFaceType (might need to do other things, this should be thought about harder)
 	void unload();
@@ -60,6 +61,8 @@ private:
 	unsigned char checkNeighbors(int blockIndex); // Returns a bitmask representing which faces are visible and which are not
 	void greedyMesh();
 
+	void setChunkLodMapVectorSize();
+
 	ProcGen* proceduralAlgorithm;
 	GreedyAlgorithm ga;
 	std::map<int, std::vector<unsigned char>> chunkLodMap; // delete this upon unload
@@ -73,5 +76,5 @@ private:
 	int blockResolution; // 1 >> detailLevel
 	int chunkX, chunkZ;
 	bool hasBeenGenerated[7];
-	bool altered;// Keep track of whether the chunk has had modifications made to it (is not the same as when it was procedurally generated) for saving purposes
+	std::stack<std::pair<unsigned int, unsigned char>> chunkEditsStack; // Keeps track of the edits made to chunks for saving purposes so they never have to have the entire chunk saved.
 };

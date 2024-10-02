@@ -21,7 +21,7 @@ using ChunkCoordPair = std::pair<int, int>;
 
 class WorldManager {
 public:
-    WorldManager();
+    WorldManager(std::recursive_mutex& wmm);
     bool initialize(ProcGen* pg);
     void update();
     void updateRenderChunks(int originX, int originZ, int renderRadius, bool unloadAll);
@@ -78,7 +78,7 @@ private:
     std::future<void> loadFuture;
     std::mutex preparedChunksMtx;
     std::recursive_mutex chunkUpdateMtx;
-    std::recursive_mutex worldMapMtx;
+    std::recursive_mutex& worldMapMtx;
     std::recursive_mutex renderBuffersMtx;
     std::atomic<bool> updatedRenderChunks;
     std::atomic<bool> stopAsync;

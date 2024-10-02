@@ -1,18 +1,25 @@
 #include "h/Player/Player.h"
 
-Player::Player() :
+#define CHUNK_WIDTH 64
+#define CHUNK_HEIGHT 256
+#define CHUNK_DEPTH 64
+
+Player::Player(std::recursive_mutex& wmm) :
 	gravitationalAcceleration(70),
 	verticalVelocity(0),
 	xVelocity(0),
 	zVelocity(0),
 	horizontalAcceleration(5.f),
 	gravityOn(true),
+	gravityWasOff(false),
 	currentGravitationalCollision(false),
 	isJumping(false),
 	jumpAcceleration(-15),
-	breakBlockDelay(0)
+	breakBlockDelay(0),
+	worldMapMutex(wmm)
 {
 	srand((unsigned int)time(NULL));
+	lastChunkFractional = { {-8008135, false},  {-8008135, false}};
 }
 
 void Player::initialize() {
@@ -25,24 +32,23 @@ void Player::initialize() {
 	prevKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = false;
 }
 
-void Player::setCamera(Camera* c) {
-	camera = c;
-	camera->setMode(false);
-}
-
-void Player::setWorld(WorldManager* w) {
-	world = w;
-}
-
-void Player::toggleGravity() {
-	gravityOn = !gravityOn;
-	camera->setMode(!gravityOn);
-}
-
 void Player::update(float deltaTime) {
+	glm::vec3 currPos = camera->getCameraPos();
+
+	float chunkXPrecise = currPos.x > 0 ? currPos.x / 64 : (currPos.x - 63) / 64;
+	float chunkZPrecise = currPos.z > 0 ? currPos.z / 64 : (currPos.z - 63) / 64;
+	double chunkXInt, chunkZInt;
+	float chunkXFractional = modf(chunkXPrecise, &chunkXInt);
+	float chunkZFractional = modf(chunkZPrecise, &chunkZInt);
+
+	bool chunkXFractionalBool = chunkXFractional > 0 ? (chunkXFractional > 0.5 ? true : false) : (abs(chunkXFractional) > 0.5 ? false : true);
+	bool chunkZFractionalBool = chunkZFractional > 0 ? (chunkZFractional > 0.5 ? true : false) : (abs(chunkZFractional) > 0.5 ? false : true);
 
 	if (gravityOn) {
-		glm::vec3 currPos = camera->getCameraPos();
+		if (chunkXInt != lastChunkFractional.first.first || chunkXFractionalBool != lastChunkFractional.first.second || chunkZInt != lastChunkFractional.second.first || chunkZFractionalBool
+			!= lastChunkFractional.second.second || gravityWasOff) {
+			setPlayerChunks();
+		}
 		glm::vec3 origPos = currPos;
 
 		// First move vertically
@@ -67,8 +73,8 @@ void Player::update(float deltaTime) {
 			isJumping = false;
 		}
 
-		currPos = camera->getCameraPos();
-		origPos = currPos;
+			currPos = camera->getCameraPos();
+			origPos = currPos;
 
 		// handle horizontal collisions
 		currPos.x += xVelocity * deltaTime;
@@ -88,6 +94,68 @@ void Player::update(float deltaTime) {
 				}
 			}
 		}
+		gravityWasOff = false;
+	}
+	else {
+		gravityWasOff = true;
+	}
+
+	lastChunkFractional = { {static_cast<int>(chunkXInt), chunkXFractionalBool}, {static_cast<int>(chunkZInt), chunkZFractionalBool} };
+}
+
+unsigned char Player::getBlockAt(int worldX, int worldY, int worldZ) {
+	int chunkX = convertWorldCoordToChunkCoord(worldX);
+	int chunkZ = convertWorldCoordToChunkCoord(worldZ);
+	std::pair<int, int> key = { chunkX, chunkZ };
+
+	int accessX = -8008135, accessZ = -8008135;
+	for (int x = 0; x < 2; x++) {
+		for (int z = 0; z < 2; z++) {
+			if (playerChunks[x][z].first == key) {
+				accessX = x;
+				accessZ = z;
+			}
+		}
+	}
+	
+	int localX = (((worldX % CHUNK_WIDTH) + CHUNK_WIDTH) % CHUNK_WIDTH);
+	int localZ = (((worldZ % CHUNK_DEPTH) + CHUNK_DEPTH) % CHUNK_DEPTH);
+
+	int flatIndex = convert3DCoordinatesToFlatIndex(localX, worldY, localZ);
+
+	return playerChunks[accessX][accessZ].second[flatIndex];
+}
+
+int Player::convertWorldCoordToChunkCoord(int worldCoord) {
+	return worldCoord > 0 ? worldCoord / CHUNK_WIDTH : (worldCoord - (CHUNK_WIDTH - 1)) / CHUNK_WIDTH;
+}
+
+int Player::convert3DCoordinatesToFlatIndex(int x, int y, int z) {
+	return x + (z * CHUNK_WIDTH) + (y * CHUNK_WIDTH * CHUNK_DEPTH);
+}
+
+void Player::setPlayerChunks() {
+
+	glm::vec3 currPos = camera->getCameraPos();
+	float chunkXPrecise = currPos.x > 0 ? currPos.x / 64 : (currPos.x - 63) / 64;
+	float chunkZPrecise = currPos.z > 0 ? currPos.z / 64 : (currPos.z - 63) / 64;
+	double chunkXInt, chunkZInt;
+	float chunkXFractional = modf(chunkXPrecise, &chunkXInt);
+	float chunkZFractional = modf(chunkZPrecise, &chunkZInt);
+
+	int incrementX = chunkXFractional > 0 ? (chunkXFractional > 0.5 ? 1 : -1) : (abs(chunkXFractional) > 0.5 ? -1 : 1);
+	int incrementZ = chunkZFractional > 0 ? (chunkZFractional > 0.5 ? 1 : -1) : (abs(chunkZFractional) > 0.5 ? -1 : 1);
+
+	playerChunks[0][0].first = { static_cast<int>(chunkXInt), static_cast<int>(chunkZInt) };
+	playerChunks[0][1].first = { static_cast<int>(chunkXInt + incrementX), static_cast<int>(chunkZInt) };
+	playerChunks[1][0].first = { static_cast<int>(chunkXInt), static_cast<int>(chunkZInt + incrementZ) };
+	playerChunks[1][1].first = { static_cast<int>(chunkXInt + incrementX), static_cast<int>(chunkZInt + incrementZ) };
+
+	std::lock_guard<std::recursive_mutex> worldLock(worldMapMutex);
+	for (int x = 0; x < 2; x++) {
+		for (int z = 0; z < 2; z++) {
+			playerChunks[x][z].second = world->worldMap[playerChunks[x][z].first]->getCurrChunkVec();
+		}
 	}
 }
 
@@ -101,7 +169,7 @@ bool Player::checkForGravitationalCollision() {
 
 	for (int x = minCheckX; x <= maxCheckX; x++) {
 		for (int z = minCheckZ; z <= maxCheckZ; z++) {
-			unsigned char block = world->getBlockAtGlobal(x, cameraPos.y, z, false, false, -1, -1);
+			unsigned char block = getBlockAt(x, cameraPos.y, z);
 			if (block != 0 && block != 69) {
 				currentGravitationalCollision = true;
 				return true;
@@ -115,7 +183,7 @@ bool Player::checkForGravitationalCollision() {
 
 bool Player::checkHeadCollision() {
 	glm::vec3 cameraPos = camera->getCameraPos();
-	unsigned char block = world->getBlockAtGlobal(floor(cameraPos.x), floor(cameraPos.y + 0.1), floor(cameraPos.z), false, false, -1, -1);
+	unsigned char block = getBlockAt(floor(cameraPos.x), floor(cameraPos.y + 0.1), floor(cameraPos.z));
 	if (block != 0 && block != 69) {
 		return true;
 	}
@@ -137,8 +205,8 @@ bool Player::checkForHorizontalCollision() {
 
 	for (int x = xMin; x <= xMax; x++) {
 		for (int y = yMin; y <= yMax; y++) {
-			if (world->getBlockAtGlobal(x, y, std::floor(camPos.z), false, false, -1, -1) != 0 &&
-				world->getBlockAtGlobal(x, y, std::floor(camPos.z), false, false, -1, -1) != 69) {
+			if (getBlockAt(x, y, std::floor(camPos.z)) != 0 &&
+				getBlockAt(x, y, std::floor(camPos.z)) != 69) {
 				return true;
 			}
 		}
@@ -146,8 +214,8 @@ bool Player::checkForHorizontalCollision() {
 
 	for (int z = zMin; z <= zMax; z++) {
 		for (int y = yMin; y <= yMax; y++) {
-			if (world->getBlockAtGlobal(std::floor(camPos.x), y, z, false, false, -1, -1) != 0 &&
-				world->getBlockAtGlobal(std::floor(camPos.x), y, z, false, false, -1, -1) != 69) {
+			if (getBlockAt(std::floor(camPos.x), y, z) != 0 &&
+				getBlockAt(std::floor(camPos.x), y, z) != 69) {
 				return true;
 			}
 		}
@@ -156,8 +224,8 @@ bool Player::checkForHorizontalCollision() {
 	for (int x = xMin; x <= xMax; x++) {
 		for (int z = zMin; z <= zMax; z++) {
 			for (int y = yMin; y <= yMax; y++) {
-				if (world->getBlockAtGlobal(x, y, z, false, false, -1, -1) != 0 &&
-					world->getBlockAtGlobal(x, y, z, false, false, -1, -1) != 69) {
+				if (getBlockAt(x, y, z) != 0 &&
+					getBlockAt(x, y, z) != 69) {
 					return true;
 				}
 			}
@@ -290,6 +358,20 @@ intbound() from Will, https://gamedev.stackexchange.com/users/4129/will, works w
 
 float intbound(float s, float ds) {
 	return (ds > 0 ? ceil(s) - s : s - floor(s)) / abs(ds);
+}
+
+void Player::setCamera(Camera* c) {
+	camera = c;
+	camera->setMode(false);
+}
+
+void Player::setWorld(WorldManager* w) {
+	world = w;
+}
+
+void Player::toggleGravity() {
+	gravityOn = !gravityOn;
+	camera->setMode(!gravityOn);
 }
 
 /*

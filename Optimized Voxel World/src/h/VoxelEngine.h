@@ -29,7 +29,7 @@ private:
 	static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
 
 	GLFWwindow* window;
-	WorldManager worldManager;
+	std::unique_ptr<WorldManager> worldManager;
 	Shader blockShader, debugShader, userInterfaceShader;
 	Camera camera;
 	DebugUI debugUI;
@@ -37,7 +37,7 @@ private:
 	ProcGenGui proceduralGenerationGui;
 	ProcGen proceduralGeneration;
 
-	Player player;
+	std::unique_ptr<Player> player;
 
 	float deltaTime;
 	float lastFrame;
@@ -65,10 +65,8 @@ private:
 	Shader postProcessingShader;
 	GLuint quadVAO, quadVBO;
 	bool usePostProcessing;
-
-	// Helper
-	bool setupFramebuffer(int width, int height);
-	void setupPostProcessingQuad();
+	
+	std::recursive_mutex worldMapMutex;
 
 	unsigned int windowWidth, windowHeight;
 };

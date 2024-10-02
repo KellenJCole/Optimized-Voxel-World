@@ -6,11 +6,12 @@
 #define CHUNK_DEPTH 64
 #define CHUNK_HEIGHT 256
 
-WorldManager::WorldManager() :
+WorldManager::WorldManager(std::recursive_mutex& wmm) :
 	lightPos(0.0f, 2000.f, 0.0f),
 	lightColor(0.9f, 0.8f, 0.7f),
 	updatedRenderChunks(false),
-	renderRadius(0)
+	renderRadius(0),
+	worldMapMtx(wmm)
 {
 	lastFrustumCheck = glfwGetTime();
 
@@ -74,9 +75,7 @@ void WorldManager::updateRenderChunks(int originX, int originZ, int renderRadius
 			stopAsync.store(false);  // Reset the stop flag
 		}
 
-		if (unloadAll) {
-			unloadChunks(loadVector, unloadAll);  // Unload before starting a new task
-		}
+		unloadChunks(loadVector, unloadAll);  // Unload before starting a new task
 
 		// Start new async task for loading chunks
 		loadFuture = std::async(std::launch::async, [this, loadVector] {
@@ -103,14 +102,20 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 		{
 			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 			if (worldMap.find(key) != worldMap.end()) {
-				if (worldMap[key]->getCurrentLod() != calculateLevelOfDetail(key)) {
-
+				int newLod = calculateLevelOfDetail(key);
+				bool entered = false;
+				if (worldMap[key]->getCurrentLod() != newLod) {
+					entered = true;
+					worldMap[key]->convertLOD(newLod);
+					updateMesh(key);
 				}
-				genMeshForSingleChunk(key);
+				else {
+					genMeshForSingleChunk(key);
 
-				// Notify that the chunk is ready
-				markChunkReadyForRender(key);
-				continue;  // Skip to the next chunk
+					// Notify that the chunk is ready
+					markChunkReadyForRender(key);
+					continue;  // Skip to the next chunk
+				}
 			}
 
 			auto newChunk = std::make_unique<Chunk>();
@@ -323,9 +328,8 @@ void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
 		std::lock_guard<std::recursive_mutex> chunkLock(chunkUpdateMtx, std::adopt_lock);
 		auto it = worldMap.find(key);
 		if (it != worldMap.end()) {
-			// Calculate local coordinates
-			int localX = (((worldX % 64) + 64) % 64);
-			int localZ = (((worldZ % 64) + 64) % 64);
+			int localX = (((worldX % CHUNK_WIDTH) + CHUNK_WIDTH) % CHUNK_WIDTH);
+			int localZ = (((worldZ % CHUNK_DEPTH) + CHUNK_DEPTH) % CHUNK_DEPTH);
 			it->second->breakBlock(localX, worldY, localZ);
 			updateMesh(key);
 			// Update neighboring chunks if necessary
@@ -346,7 +350,6 @@ void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
 }
 
 void WorldManager::placeBlock(int worldX, int worldY, int worldZ, unsigned char blockToPlace) {
-	// Corrected bit shift from >>5 to >>6 for 64-block chunks
 	int chunkX = convertWorldCoordToChunkCoord(worldX);
 	int chunkZ = convertWorldCoordToChunkCoord(worldZ);
 	std::pair<int, int> key = { chunkX, chunkZ };
@@ -365,13 +368,13 @@ void WorldManager::placeBlock(int worldX, int worldY, int worldZ, unsigned char 
 			if (localX == 0) {
 				updateMesh({ key.first - 1, key.second });
 			}
-			if (localX == 63) {
+			if (localX == CHUNK_WIDTH - 1) {
 				updateMesh({ key.first + 1, key.second });
 			}
 			if (localZ == 0) {
 				updateMesh({ key.first, key.second - 1 });
 			}
-			if (localZ == 63) {
+			if (localZ == CHUNK_DEPTH - 1) {
 				updateMesh({ key.first, key.second + 1 });
 			}
 		}

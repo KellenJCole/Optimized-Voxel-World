@@ -11,7 +11,6 @@ Chunk::Chunk() :
 	chunkX(0),
 	chunkZ(0),
 	detailLevel(0),
-	altered(false),
 	blockResolution(0)
 {
 	iFaces[0] = NEG_X;
@@ -26,7 +25,14 @@ Chunk::Chunk() :
 }
 
 void Chunk::generateChunk() {
+	setChunkLodMapVectorSize();
 
+	proceduralAlgorithm->generateChunk(chunkLodMap[detailLevel], std::make_pair(chunkX, chunkZ), detailLevel);
+
+	hasBeenGenerated[detailLevel] = true;
+}
+
+void Chunk::setChunkLodMapVectorSize() {
 	switch (detailLevel) {
 	case 0:
 		chunkLodMap[0].resize(1048576, 0);
@@ -56,10 +62,6 @@ void Chunk::generateChunk() {
 		blockResolution = 64;
 		break;
 	}
-
-	proceduralAlgorithm->generateChunk(chunkLodMap[detailLevel], std::make_pair(chunkX, chunkZ), detailLevel);
-
-	hasBeenGenerated[detailLevel] = true;
 }
 
 void Chunk::generateChunkMeshes() { // Iterates through every face on every block, filling relevant vectors with face visibility status. Probably could be mega-optimized with SVOs
@@ -223,10 +225,18 @@ int Chunk::getBlockAt(int worldX, int worldY, int worldZ, bool boundaryCall, boo
 	return static_cast<int>(chunkLodMap[detailLevel][flatIndex]);
 }
 
-bool Chunk::convertLOD(int newLod) {
-	if (chunkLodMap.find(newLod) != chunkLodMap.end()) { // LOD here already exists
+/*
+Plan:
+If the LOD we want already exists, the WM just needs to now get meshes
+We will save the changes made to chunks instead of ever saving LOD's unnecessarily
+*/
 
-	}
+void Chunk::convertLOD(int newLod) {
+	std::vector<unsigned char> temp;
+	chunkLodMap[detailLevel].swap(temp);
+	setLod(newLod);
+
+	generateChunk();
 }
 
 void Chunk::setProcGenReference(ProcGen* pg) {
@@ -304,6 +314,10 @@ std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<i
 void Chunk::unload() {
 	visByFaceType.clear();
 	ga.unload();
+}
+
+std::vector<unsigned char> Chunk::getCurrChunkVec() {
+	return chunkLodMap[detailLevel];
 }
 
 Chunk::~Chunk() {
