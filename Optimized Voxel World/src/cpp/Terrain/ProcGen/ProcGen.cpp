@@ -2,11 +2,12 @@
 #include <time.h>
 #include <iostream>
 
-#define CHUNK_WIDTH 64
-#define CHUNK_DEPTH 64
-#define CHUNK_HEIGHT 256
-
-ProcGen::ProcGen() {
+ProcGen::ProcGen() : 
+	heightAmplitude(80),
+	blockResolution(0),
+	resolutionXZ(0),
+	resolutionY(0)
+{
 	srand(time(NULL));
 	for (int i = 0; i < 4; i++) {
 		heightMapNoise[i].SetFractalType(FastNoise::FractalType::FBM);
@@ -26,35 +27,29 @@ ProcGen::ProcGen() {
 	heightMapWeights[1] = .25f;
 	heightMapWeights[2] = .15f;
 	heightMapWeights[3] = .1f;
-
-	heightAmplitude = 80;
-
-	blockResolution = 0;
 }
 
-void ProcGen::generateChunk(std::vector<unsigned char>& chunkVec, std::pair<int, int> chunkCoordPair, int levelOfDetail) {
+int ProcGen::generateChunk(std::vector<unsigned char>& chunkVec, std::pair<int, int> chunkCoordPair, int levelOfDetail) {
 	std::lock_guard<std::mutex> procGenLock(procGenMutex);
-	setBlockResolution(levelOfDetail);
+	setLODVariables(levelOfDetail);
 	std::vector<std::vector<float>> hm = getHeightMap(chunkCoordPair);
 
 	const float globalMin = -1.0f; // Minimum possible Perlin noise value
 	const float globalMax = 1.0f;  // Maximum possible Perlin noise value
+	
+	int highestOccupiedIndex = 0;
 
-	int resolution = CHUNK_WIDTH / blockResolution;
-	int heightResolution = CHUNK_HEIGHT / blockResolution;
-
-	for (int x = 0; x < resolution; x++) {
-		for (int z = 0; z < resolution; z++) {
+	for (int x = 0; x < resolutionXZ; x++) {
+		for (int z = 0; z < resolutionXZ; z++) {
 			float normalizedHeight = (hm[x][z] - globalMin) / (globalMax - globalMin);
 			float convertHeight = normalizedHeight * heightAmplitude;
 			int highestIndex = -1;
 
-			for (int y = 0; y < heightResolution; y++) {
+			for (int y = 0; y < resolutionY; y++) {
 				int index = convert3DCoordinatesToFlatIndex(x, y, z);
 				int worldY = y * blockResolution;
 
 				if (worldY <= convertHeight) {
-					
 					if (y <= convertHeight && normalizedHeight < 0.2f) {
 						chunkVec[index] = 4; // Bedrock
 					}
@@ -74,13 +69,18 @@ void ProcGen::generateChunk(std::vector<unsigned char>& chunkVec, std::pair<int,
 			if (highestIndex != -1 && chunkVec[highestIndex] == 1) {
 				chunkVec[highestIndex] = 2; // Grass
 			}
+			if (highestIndex > highestOccupiedIndex) {
+				highestOccupiedIndex = highestIndex;
+			}
 		}
 	}
+
+	return highestOccupiedIndex;
 }
 
 
 std::vector<std::vector<float>> ProcGen::getHeightMap(std::pair<int, int> chunkCoordPair) {
-	int resolution = CHUNK_WIDTH / blockResolution; // resolution is halved for each LOD
+	int resolution = ChunkUtils::WIDTH / blockResolution; // resolution is halved for each LOD
 	std::vector<std::vector<float>> heightMap(resolution, std::vector<float>(resolution));
 
 	int chunkX = chunkCoordPair.first;
@@ -88,8 +88,8 @@ std::vector<std::vector<float>> ProcGen::getHeightMap(std::pair<int, int> chunkC
 	for (int x = 0; x < resolution; x++) {
 		for (int z = 0; z < resolution; z++) {
 			// Calculate world-space positions for this heightmap point.
-			int x1 = (x * blockResolution) + (chunkX * CHUNK_WIDTH);
-			int z1 = (z * blockResolution) + (chunkZ * CHUNK_DEPTH);
+			int x1 = (x * blockResolution) + (chunkX * ChunkUtils::WIDTH);
+			int z1 = (z * blockResolution) + (chunkZ * ChunkUtils::DEPTH);
 
 			float val;
 			if (blockResolution == 1) {
@@ -155,15 +155,9 @@ void ProcGen::setNoiseState(std::vector<float> state) {
 	heightAmplitude = state[20];
 }
 
-int ProcGen::convert3DCoordinatesToFlatIndex(int x, int y, int z) {
-	int width = CHUNK_WIDTH / blockResolution;
-	int depth = CHUNK_DEPTH / blockResolution;
-	int height = CHUNK_HEIGHT / blockResolution;
-
-	return x + (z * width) + (y * width * depth);
-}
-
-void ProcGen::setBlockResolution(int levelOfDetail) {
+void ProcGen::setLODVariables(int levelOfDetail) {
 	blockResolution = 1 << levelOfDetail;
+	resolutionXZ = ChunkUtils::WIDTH / blockResolution;
+	resolutionY = ChunkUtils::HEIGHT / blockResolution;
 }
 

@@ -21,18 +21,20 @@ using ChunkCoordPair = std::pair<int, int>;
 
 class WorldManager {
 public:
-    WorldManager(std::recursive_mutex& wmm);
+    WorldManager();
     bool initialize(ProcGen* pg);
     void update();
     void updateRenderChunks(int originX, int originZ, int renderRadius, bool unloadAll);
     void render();
     void cleanup();
     void setCamAndShaderPointers(Shader* sha, Camera* cam);
-    int getBlockAtGlobal(int worldX, int worldY, int worldZ, bool fromSelf, bool boundaryCheck, int prevLod, int face);
+    unsigned char getBlockAtGlobal(int worldX, int worldY, int worldZ, int prevLod, int face);
     void switchRenderMethod();
     void breakBlock(int worldX, int worldY, int worldZ);
     void placeBlock(int worldX, int worldY, int worldZ, unsigned char blockToPlace);
+    std::vector<unsigned char> getChunkVector(ChunkCoordPair key);
     void passWindowPointerToRenderer(GLFWwindow* window);
+    bool getReadyForPlayerUpdate();
 
     // Delete copy constructor and copy assignment operator
     WorldManager(const WorldManager&) = delete;
@@ -53,8 +55,6 @@ private:
 
     int calculateLevelOfDetail(ChunkCoordPair ccp);
 
-    int convertWorldCoordToChunkCoord(int worldCoord);
-
     glm::vec3 calculatePosition(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner, int faceType, ChunkCoordPair cxcz, int offset, int levelOfDetail);
     glm::vec2 calculateTexCoords(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner);
 
@@ -66,7 +66,8 @@ private:
     // Store unique_ptr to manage Chunk lifetimes
     std::unordered_map<ChunkCoordPair, std::vector<Vertex>, PairHash> verticesByChunk;
     std::unordered_map<ChunkCoordPair, std::vector<unsigned int>, PairHash> indicesByChunk;
-    std::unordered_set<ChunkCoordPair, PairHash> preparedChunks;
+    std::unordered_set<ChunkCoordPair, PairHash> meshKeysToUpdate;
+    std::unordered_set<ChunkCoordPair, PairHash> worldKeysSet;
 
     // SHADER CAMERA LIGHTS
     Shader* shader;
@@ -76,14 +77,14 @@ private:
 
     // MULTITHREAD
     std::future<void> loadFuture;
-    std::mutex preparedChunksMtx;
+    std::mutex meshKeysMtx;
     std::recursive_mutex chunkUpdateMtx;
-    std::recursive_mutex& worldMapMtx;
+    std::recursive_mutex worldMapMtx;
     std::recursive_mutex renderBuffersMtx;
     std::atomic<bool> updatedRenderChunks;
     std::atomic<bool> stopAsync;
 
-
+    bool readyForPlayerUpdate;
     double lastFrustumCheck;
     int renderRadius;
 };

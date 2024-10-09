@@ -17,8 +17,8 @@ VoxelEngine::VoxelEngine() :
     windowWidth(1600),
     windowHeight(900) {
 
-    currChunkX = (camera.getCameraPos().x < 0 ? camera.getCameraPos().x - 64 : camera.getCameraPos().x) / 64;
-    currChunkZ = (camera.getCameraPos().z < 0 ? camera.getCameraPos().z - 64 : camera.getCameraPos().z) / 64;
+    currChunkX = (camera.getCameraPos().x < 0 ? camera.getCameraPos().x - ChunkUtils::WIDTH : camera.getCameraPos().x) / ChunkUtils::WIDTH;
+    currChunkZ = (camera.getCameraPos().z < 0 ? camera.getCameraPos().z - ChunkUtils::DEPTH : camera.getCameraPos().z) / ChunkUtils::DEPTH;
     lastChunkX = currChunkX;
     lastChunkZ = lastChunkZ;
 
@@ -68,8 +68,7 @@ bool VoxelEngine::initialize() {
 
     std::cout << glGetString(GL_VERSION) << "\n";
 
-    worldManager = std::make_unique<WorldManager>(worldMapMutex);
-    if (!worldManager->initialize(&proceduralGeneration)) {
+    if (!worldManager.initialize(&proceduralGeneration)) {
         std::cout << "World Manager initialization failure\n";
     }
     blockShader = Shader("src/res/shaders/Block.shader");
@@ -140,11 +139,10 @@ bool VoxelEngine::initialize() {
     camera = Camera(0.2); // 0.2 is our camera's sensitivity.
     swapRenderMethodCooldown = 0.0f;
 
-    worldManager->setCamAndShaderPointers(&blockShader, &camera);
+    worldManager.setCamAndShaderPointers(&blockShader, &camera);
 
-    player = std::make_unique<Player>(worldMapMutex);
-    player->setCamera(&camera);
-    player->setWorld(worldManager.get());
+    player.setCamera(&camera);
+    player.setWorld(&worldManager);
 
     if (!debugUI.initialize()) {
         std::cout << "DebugUI failed initialization\n";
@@ -173,18 +171,17 @@ bool VoxelEngine::initialize() {
 
     userInterface.initialize();
 
-    player->initialize();
+    player.initialize();
 
     proceduralGenerationGui.initialize(window, &proceduralGeneration);
 
-
-    worldManager->passWindowPointerToRenderer(window);
+    worldManager.passWindowPointerToRenderer(window);
 
     return true;
 }
 
 void VoxelEngine::run() {
-    worldManager->updateRenderChunks(0, 0, renderRadius, false);
+    worldManager.updateRenderChunks(0, 0, renderRadius, false);
 
     double timeAtLastFPSCheck = glfwGetTime();
     int numberOfFrames = 0;
@@ -231,7 +228,7 @@ void VoxelEngine::processInput() {
             }
             playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] = false;
             playerKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = false;
-            player->processKeyboardInput(playerKeyStates, deltaTime);
+            player.processKeyboardInput(playerKeyStates, deltaTime);
         }
         else {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -239,31 +236,31 @@ void VoxelEngine::processInput() {
     }
 
     if (!imGuiCursor) {
-        player->processKeyboardInput(playerKeyStates, deltaTime);
+        player.processKeyboardInput(playerKeyStates, deltaTime);
     }
 
     if (!imGuiCursor) {
         if (keyStates[GLFW_KEY_F] && !lastKeyStates[GLFW_KEY_F])                // F -> Toggle polygon line/fill
-            worldManager->switchRenderMethod();
+            worldManager.switchRenderMethod();
 
         if (keyStates[GLFW_KEY_P] && !lastKeyStates[GLFW_KEY_P])                // F -> Toggle polygon line/fill
             usePostProcessing = !usePostProcessing;
 
         if (keyStates[GLFW_KEY_G] && !lastKeyStates[GLFW_KEY_G])                // G -> Toggle gravity
-            player->toggleGravity();
+            player.toggleGravity();
 
         if (keyStates[GLFW_KEY_I] && !lastKeyStates[GLFW_KEY_I])                // I -> Toggle debug text
             renderDebug = !renderDebug;
 
         if (keyStates[GLFW_KEY_UP] && !lastKeyStates[GLFW_KEY_UP]) {            // Up arrow -> Increase render radius by 1
             renderRadius += 1;
-            worldManager->updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
+            worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
         }
 
         if (keyStates[GLFW_KEY_DOWN] && !lastKeyStates[GLFW_KEY_DOWN]) {        // Down arrow -> Decrease render radius by 1
             if (renderRadius > 1) {
                 renderRadius--;
-                worldManager->updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
+                worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
             }
         }
     }
@@ -272,26 +269,27 @@ void VoxelEngine::processInput() {
 }
 
 void VoxelEngine::update() {
+    if (worldManager.getReadyForPlayerUpdate())
+        player.update(deltaTime);
+
     int cameraPosX = floor(camera.getCameraPos().x);
     int cameraPosZ = floor(camera.getCameraPos().z);
-    currChunkX = cameraPosX >= 0 ? cameraPosX / 64 : (cameraPosX - 63) / 64;
-    currChunkZ = cameraPosZ >= 0 ? cameraPosZ / 64 : (cameraPosZ - 63) / 64;
+    currChunkX = cameraPosX >= 0 ? cameraPosX / ChunkUtils::WIDTH : (cameraPosX - (ChunkUtils::WIDTH - 1)) / ChunkUtils::WIDTH;
+    currChunkZ = cameraPosZ >= 0 ? cameraPosZ / ChunkUtils::DEPTH : (cameraPosZ - (ChunkUtils::DEPTH - 1)) / ChunkUtils::DEPTH;
     
-    worldManager->update();
+    worldManager.update();
 
     bool pggUpdateTerrain = proceduralGenerationGui.shouldUpdate();
     bool crossedChunkBorder = currChunkX != lastChunkX || currChunkZ != lastChunkZ;
     if (pggUpdateTerrain) {
-        worldManager->updateRenderChunks(currChunkX, currChunkZ, renderRadius, true);
+        worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, true);
     }
     else if (crossedChunkBorder) {
-        worldManager->updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
+        worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
     }
 
     lastChunkX = currChunkX;
     lastChunkZ = currChunkZ;
-
-    player->update(deltaTime);
 }
 
 void VoxelEngine::render() {
@@ -314,7 +312,7 @@ void VoxelEngine::render() {
     blockShader.setUniform4fv("projection", (glm::mat4&)camera.getProjection());
     // Render stuff below here
     proceduralGenerationGui.startLoop();
-    worldManager->render();
+    worldManager.render();
 
     if (usePostProcessing) {
         GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
@@ -363,7 +361,7 @@ void VoxelEngine::framebuffer_size_callback(GLFWwindow* window, int width, int h
 }
 
 void VoxelEngine::cleanup() {
-    worldManager->cleanup();
+    worldManager.cleanup();
     blockShader.deleteProgram();
     debugShader.deleteProgram();
     userInterfaceShader.deleteProgram();

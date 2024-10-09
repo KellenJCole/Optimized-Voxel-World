@@ -50,6 +50,7 @@
     <ClCompile Include="src\h\FastNoise-master\FastNoise.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\h\Constants.h" />
     <ClInclude Include="src\h\Dear ImGui\imconfig.h" />
     <ClInclude Include="src\h\Dear ImGui\imgui.h" />
     <ClInclude Include="src\h\Dear ImGui\imgui_impl_glfw.h" />

@@ -101,8 +101,8 @@ std::vector<std::pair<int, int>> Camera::getVisibleChunks(int renderDistance) {
 	std::vector<std::pair<int, int>> visibleChunks;
 	auto planes = calculateFrustumPlanes();
 
-	int centerX = cameraPos.x >= 0 ? cameraPos.x / 64 : (cameraPos.x - 63) / 64;
-	int centerZ = cameraPos.z >= 0 ? cameraPos.z / 64 : (cameraPos.z - 63) / 64;
+	int centerX = ChunkUtils::convertWorldCoordToChunkCoord(static_cast<int>(floor(cameraPos.x)));
+	int centerZ = ChunkUtils::convertWorldCoordToChunkCoord(static_cast<int>(floor(cameraPos.z)));
 
 	for (int x = centerX - renderDistance; x <= centerX + renderDistance; ++x) {
 		for (int z = centerZ - renderDistance; z <= centerZ + renderDistance; ++z) {
@@ -143,14 +143,14 @@ std::array<glm::vec4, 6> Camera::calculateFrustumPlanes() const {
 
 bool Camera::isChunkVisible(const std::pair<int, int>& chunkCoord, const std::array<glm::vec4, 6>& planes) const {
 	glm::vec3 boundingBox[8];
-	boundingBox[0] = glm::vec3(chunkCoord.first * 64, 0, chunkCoord.second * 64);
-	boundingBox[1] = glm::vec3(chunkCoord.first * 64 + 64, 0, chunkCoord.second * 64);
-	boundingBox[2] = glm::vec3(chunkCoord.first * 64 + 64, 0, chunkCoord.second * 64 + 64);
-	boundingBox[3] = glm::vec3(chunkCoord.first * 64, 0, chunkCoord.second * 64 + 64);
-	boundingBox[4] = glm::vec3(chunkCoord.first * 64, 256, chunkCoord.second * 64);
-	boundingBox[5] = glm::vec3(chunkCoord.first * 64 + 64, 256, chunkCoord.second * 64);
-	boundingBox[6] = glm::vec3(chunkCoord.first * 64 + 64, 256, chunkCoord.second * 64 + 64);
-	boundingBox[7] = glm::vec3(chunkCoord.first * 64, 256, chunkCoord.second * 64 + 64);
+	boundingBox[0] = glm::vec3(chunkCoord.first * ChunkUtils::WIDTH,						0,						chunkCoord.second * ChunkUtils::DEPTH);
+	boundingBox[1] = glm::vec3(chunkCoord.first * ChunkUtils::WIDTH + ChunkUtils::WIDTH,	0,						chunkCoord.second * ChunkUtils::DEPTH);
+	boundingBox[2] = glm::vec3(chunkCoord.first * ChunkUtils::WIDTH + ChunkUtils::WIDTH,	0,						chunkCoord.second * ChunkUtils::DEPTH + ChunkUtils::DEPTH);
+	boundingBox[3] = glm::vec3(chunkCoord.first * ChunkUtils::WIDTH,						0,						chunkCoord.second * ChunkUtils::DEPTH + ChunkUtils::DEPTH);
+	boundingBox[4] = glm::vec3(chunkCoord.first * ChunkUtils::WIDTH,						ChunkUtils::HEIGHT,		chunkCoord.second * ChunkUtils::DEPTH);
+	boundingBox[5] = glm::vec3(chunkCoord.first * ChunkUtils::WIDTH + ChunkUtils::WIDTH,	ChunkUtils::HEIGHT,		chunkCoord.second * ChunkUtils::DEPTH);
+	boundingBox[6] = glm::vec3(chunkCoord.first * ChunkUtils::WIDTH + ChunkUtils::WIDTH,	ChunkUtils::HEIGHT,		chunkCoord.second * ChunkUtils::DEPTH + ChunkUtils::DEPTH);
+	boundingBox[7] = glm::vec3(chunkCoord.first * ChunkUtils::WIDTH,						ChunkUtils::HEIGHT,		chunkCoord.second * ChunkUtils::DEPTH + ChunkUtils::DEPTH);
 
 	for (const auto& plane : planes) {
 		int outside = 0;

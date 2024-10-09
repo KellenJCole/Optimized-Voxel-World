@@ -34,8 +34,7 @@ public:
 	int getChunkX() { return chunkX; }
 	int getChunkZ() { return chunkZ; }
 	int getCurrentLod();
-	bool getProcGenGenerationStatus(int detailLvl);
-	int getBlockAt(int worldX, int worldY, int worldZ, bool boundaryCall, bool calledFromGlobal, int face, int prevLod, bool recursion);
+	unsigned char getBlockAt(int worldX, int worldY, int worldZ, int face, int prevLod);
 	std::vector<unsigned char> getCurrChunkVec();
 	// Procedurally generate chunk and form meshes
 	void generateChunk();
@@ -50,15 +49,19 @@ public:
 
 	// Clear VisByFaceType (might need to do other things, this should be thought about harder)
 	void unload();
-
-	~Chunk();
 private:
-	// Helpers
-	int convert3DCoordinatesToFlatIndex(int x, int y, int z);
+	inline int convert3DCoordinatesToFlatIndex(int x, int y, int z) {
+		return x + (z * resolutionXZ) + (y * resolutionXZ * resolutionXZ);
+	}
 	glm::ivec3 convertFlatIndexTo3DCoordinates(int flatIndex);
-	int convertWorldCoordToChunkCoord(int worldCoord);
 
-	unsigned char checkNeighbors(int blockIndex); // Returns a bitmask representing which faces are visible and which are not
+	// Face culling
+	unsigned char checkNeighbors(int blockIndex, std::vector<uint16_t>& neighborCache); // Returns a bitmask representing which faces are visible and which are not
+	int neighborOffsets[6];
+	void markNeighborsCheck(int neighborIndex, int face, std::vector<uint16_t>& neighborCache);
+	bool hasNeighborCheckBeenPerformed(int blockIndex, int face, std::vector<uint16_t>& neighborCache);
+
+
 	void greedyMesh();
 
 	void setChunkLodMapVectorSize();
@@ -70,11 +73,13 @@ private:
 	WorldManager* world;
 	BlockFace iFaces[6];
 
+	bool hasBeenGenerated[7];
+	std::stack<std::pair<unsigned int, unsigned char>> chunkEditsStack; // Keeps track of the edits made to chunks for saving purposes so they never have to have the entire chunk saved.
 
-	// Basic variables
+	// Basic variables related to level of detail
 	int detailLevel;
 	int blockResolution; // 1 >> detailLevel
 	int chunkX, chunkZ;
-	bool hasBeenGenerated[7];
-	std::stack<std::pair<unsigned int, unsigned char>> chunkEditsStack; // Keeps track of the edits made to chunks for saving purposes so they never have to have the entire chunk saved.
+	int resolutionXZ, resolutionY;
+	int highestOccupiedIndex;
 };

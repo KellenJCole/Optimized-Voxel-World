@@ -2,6 +2,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include "h/Constants.h"
 
 enum BlockFace;
 class GreedyAlgorithm {

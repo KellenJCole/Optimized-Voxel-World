@@ -2,10 +2,6 @@
 #include <algorithm>
 #include <iostream>
 
-#define CHUNK_WIDTH 64
-#define CHUNK_HEIGHT 256
-#define CHUNK_DEPTH 64
-
 enum BlockFace {
 	NEG_X = 1 << 0, // 0b000001
 	POS_X = 1 << 1, // 0b000010
@@ -120,9 +116,9 @@ void GreedyAlgorithm::assignCoordinates(BlockFace face, int unknownCoord1, int u
 void GreedyAlgorithm::populatePlanes(std::map<BlockFace, std::vector<unsigned int>>& vb, std::vector<unsigned char>& c, int levelOfDetail) {
 	int blockResolution = 1 << levelOfDetail;
 
-	int width = CHUNK_WIDTH / blockResolution;
-	int depth = CHUNK_DEPTH / blockResolution;
-	int height = CHUNK_HEIGHT / blockResolution;
+	int width = ChunkUtils::WIDTH / blockResolution;
+	int depth = ChunkUtils::DEPTH / blockResolution;
+	int height = ChunkUtils::HEIGHT / blockResolution;
 
 	for (const auto& blockLocation : vb) {
 		BlockFace face = blockLocation.first;
