@@ -7,7 +7,16 @@ A simple Minecraft clone featuring
 -Basic lighting  
 -View frustum culling   
 -Level of detail    
-  
+
+I aim to focus on optimizing the memory usage and speed of generating, meshing, and rendering chunks before moving on to real gameplay elements.    
+My next small goal is to introduce a menu screen where you can access your saves. My saving technique I have planned is to only store changes made to    
+a chunk in a stack. So instead of saving entire chunks, we only save the changes made to the freshly generated chunk. Then, when we want to load the    
+chunk again, we simply pop the stack until the chunk is back to its present state. This should be much less expensive to store than saving an entire    
+chunk would be and comes with the added benefit of being able to sort of step through the history of the chunk if you wanted to.
+I will soon face the daunting task of rendering semi-transparent blocks, something that requires one to use special techniques to get working properly.    
+After I get semi-transparent blocks working, I will move on to adding more blocks and designing more interesting procedural generation. I will add 3D noise    
+for caves and overpasses, then work on adding trees, then an inventory system, then block collecting, crafting, tools, animations for actions, mobs
+
 Credits  
 Textures used are obtained from Faithful: https://faithfulpack.net  
   
