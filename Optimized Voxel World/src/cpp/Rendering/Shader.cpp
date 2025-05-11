@@ -1,5 +1,5 @@
 #include "h/Rendering/Shader.h"
-#include "h/Rendering/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>

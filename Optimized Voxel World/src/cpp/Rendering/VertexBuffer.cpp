@@ -1,5 +1,5 @@
 #include "h/Rendering/VertexBuffer.h"
-#include "h/Rendering/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
 #include <iostream>
 
 VertexBuffer::VertexBuffer() : vertexBuffer_id(0), valid(false) {

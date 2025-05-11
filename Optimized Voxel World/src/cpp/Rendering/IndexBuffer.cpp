@@ -1,5 +1,5 @@
 #include "h/Rendering/IndexBuffer.h"
-#include "h/Rendering/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
 
 IndexBuffer::IndexBuffer() {
 	valid = false;

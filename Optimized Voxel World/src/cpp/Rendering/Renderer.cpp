@@ -1,7 +1,8 @@
 #include "h/Rendering/Renderer.h"
-#include "h/Rendering/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
+#include "h/Constants.h"
 
-Renderer::Renderer() : width(1600), height(900) {
+Renderer::Renderer() : width(WindowDetails::WindowWidth), height(WindowDetails::WindowHeight) {
  
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "GLErrorCatcher.h"
+#include "Utility/GLErrorCatcher.h"
 #include <iostream>
 
 struct VertexBufferElement {

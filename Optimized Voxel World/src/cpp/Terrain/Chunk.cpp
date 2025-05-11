@@ -128,7 +128,7 @@ unsigned char Chunk::checkNeighbors(int blockIndex, std::vector<uint16_t>& neigh
 			if (!isNeighborAir && !checkedNeighbor) {
 				markNeighborsCheck(neighborIndex, i, neighborCache);
 			}
-			else {
+			else if (isNeighborAir) {
 				faceVisibilityBitmask |= (1 << i);  // Neighbor is air, set visibility bit
 			}
 		}
@@ -250,13 +250,13 @@ void Chunk::placeBlock(int localX, int localY, int localZ, unsigned char blockTo
 }
 
 glm::ivec3 Chunk::convertFlatIndexTo3DCoordinates(int flatIndex) {
-	glm::ivec3 returnVec;
-	returnVec.y = flatIndex / (resolutionXZ * resolutionXZ);
+	glm::ivec3 coords3D;
+	coords3D.y = flatIndex / (resolutionXZ * resolutionXZ);
 	int remainder = flatIndex % (resolutionXZ * resolutionXZ);
-	returnVec.z = remainder / resolutionXZ;
-	returnVec.x = remainder % resolutionXZ;
+	coords3D.z = remainder / resolutionXZ;
+	coords3D.x = remainder % resolutionXZ;
 
-	return returnVec;
+	return coords3D;
 }
 
 std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> Chunk::getGreedyMeshByFaceType(int faceType) {

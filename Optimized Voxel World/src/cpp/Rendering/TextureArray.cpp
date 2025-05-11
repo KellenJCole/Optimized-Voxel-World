@@ -1,5 +1,5 @@
 #include "h/Rendering/TextureArray.h"
-#include "h/Rendering/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <h/stb_image/stb_image.h>
 

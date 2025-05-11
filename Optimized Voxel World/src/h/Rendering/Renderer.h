@@ -4,16 +4,11 @@
 #include "h/Rendering/IndexBuffer.h"
 #include "h/Rendering/Shader.h"
 #include "h/Rendering/VertexBufferLayout.h"
+#include "h/Rendering/Utility/BlockGeometry.h"
 #include <vector>
 #include <map>
 #include <h/glm/glm.hpp>
 #include <mutex>
-
-struct Vertex {
-    glm::vec3 position;
-    glm::vec2 texCoords;
-    int normalBlockType; // blockType = blockType * 16
-};
 
 class Renderer {
 public:

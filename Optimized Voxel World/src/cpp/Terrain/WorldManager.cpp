@@ -6,7 +6,6 @@ WorldManager::WorldManager() :
 	lightPos(0.0f, 2000.f, 0.0f),
 	lightColor(0.9f, 0.8f, 0.7f),
 	updatedRenderChunks(false),
-	renderRadius(40),
 	readyForPlayerUpdate(false)
 {
 	lastFrustumCheck = glfwGetTime();
@@ -132,22 +131,22 @@ int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
 	float distance = (float)(sqrt(pow(abs(ccp.first - cameraKey.first), 2) + pow(abs(ccp.second - cameraKey.second), 2)));
 
 	// These values are random af, need to put more thought into it
-	if (distance <= 11) {
+	if (distance <= 10) {
 		return 0;
 	}
 	else if (distance <= 20) {
 		return 1;
 	}
-	else if (distance <= 30) {
+	else if (distance <= 40) {
 		return 2;
 	}
-	else if (distance <= 40) {
+	else if (distance <= 60) {
 		return 3;
 	}
-	else if (distance <= 100) {
+	else if (distance <= 80) {
 		return 4;
 	}
-	else if (distance <= 200) {
+	else if (distance <= 100) {
 		return 5;
 	}
 	else {
@@ -290,7 +289,8 @@ unsigned char WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ,
 		}
 	}
 	else {
-		return 69; // Arbitrary non-existent chunk block
+		// Attempted to access a chunk that doesn't exist
+		return 69;
 	}
 }
 

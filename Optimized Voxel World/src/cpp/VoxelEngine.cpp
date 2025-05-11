@@ -1,7 +1,7 @@
 #include "h/VoxelEngine.h"
 #include <iostream>
 #include "h/Rendering/Shader.h"
-#include "h/Rendering/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -13,9 +13,7 @@ VoxelEngine::VoxelEngine() :
     renderDebug(false),
     imGuiCursor(false),
     usePostProcessing(true),
-    renderRadius(40),
-    windowWidth(1600),
-    windowHeight(900) {
+    renderRadius(64) {
 
     currChunkX = (camera.getCameraPos().x < 0 ? camera.getCameraPos().x - ChunkUtils::WIDTH : camera.getCameraPos().x) / ChunkUtils::WIDTH;
     currChunkZ = (camera.getCameraPos().z < 0 ? camera.getCameraPos().z - ChunkUtils::DEPTH : camera.getCameraPos().z) / ChunkUtils::DEPTH;
@@ -36,7 +34,7 @@ bool VoxelEngine::initialize() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    window = glfwCreateWindow(1600, 900, "Voxel Engine", NULL, NULL);
+    window = glfwCreateWindow(WindowDetails::WindowWidth, WindowDetails::WindowHeight, "Voxel Engine", NULL, NULL);
     glfwSetWindowPos(window, 160, 90);
     if (!window)
     {
@@ -83,7 +81,7 @@ bool VoxelEngine::initialize() {
     // Create a color attachment texture
     GLCall(glGenTextures(1, &textureColorBuffer));
     GLCall(glBindTexture(GL_TEXTURE_2D, textureColorBuffer));
-    GLCall(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowWidth, windowHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL));
+    GLCall(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WindowDetails::WindowWidth, WindowDetails::WindowHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL));
     GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
     GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
     GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
@@ -93,7 +91,7 @@ bool VoxelEngine::initialize() {
     // Create a renderbuffer object for depth and stencil attachment
     GLCall(glGenRenderbuffers(1, &rbo));
     GLCall(glBindRenderbuffer(GL_RENDERBUFFER, rbo));
-    GLCall(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, windowWidth, windowHeight));
+    GLCall(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, WindowDetails::WindowWidth, WindowDetails::WindowHeight));
     GLCall(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo));
 
     // Check if framebuffer is complete
@@ -130,7 +128,7 @@ bool VoxelEngine::initialize() {
     GLCall(glBindVertexArray(0));
 
     debugShader.use();
-    glm::mat4 projection = glm::ortho(0.0f, 1600.f, 0.0f, 900.f);
+    glm::mat4 projection = glm::ortho(0.0f, (float)WindowDetails::WindowWidth, 0.0f, (float)WindowDetails::WindowHeight);
     debugShader.setUniform4fv("projection", projection);
 
     userInterfaceShader.use();
@@ -342,7 +340,7 @@ void VoxelEngine::render() {
         stream << fps * (1.f / fpsUpdateTime) << "\n";
         stream << cameraPos.x << " " << cameraPos.y << " " << cameraPos.z << "\n";
 
-        debugUI.renderText(debugShader, stream.str(), 10.0f, 870.0f, 0.8f, glm::vec3(0.0f, 0.5f, 0.5f));
+        debugUI.renderText(debugShader, stream.str(), 10.0f, 1020.0f, 0.8f, glm::vec3(0.0f, 0.5f, 0.5f));
     }
 
     userInterface.render(userInterfaceShader);

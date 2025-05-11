@@ -1,14 +1,15 @@
 #pragma once
 #include "h/Rendering/UI/UserInterface.h"
 #include "h/Rendering/Shader.h"
-#include "h/Rendering/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
+#include "h/Constants.h"
 
 const float UserInterface::crosshairVertices[4][6] = {
-    // positions            // texture coords     //texture id
-    790.f,  460.f, 0.0f,     0.0f, 1.0f,          0,  // top left 
-    810.f,  460.f, 0.0f,     1.0f, 1.0f,          0,  // top right
-    810.f,  440.f, 0.0f,     1.0f, 0.0f,          0,  // bottom right
-    790.f,  440.f, 0.0f,     0.0f, 0.0f,          0,  // bottom left
+    // positions                                                                                        // texture coords       //texture id
+    ((float)WindowDetails::WindowWidth / 2) - 16.f, ((float)WindowDetails::WindowHeight / 2) + 16.f,    0.0f, 0.0f, 1.0f,       0,  // top left 
+    ((float)WindowDetails::WindowWidth / 2) + 16.f, ((float)WindowDetails::WindowHeight / 2) + 16.f,    0.0f, 1.0f, 1.0f,       0,  // top right
+    ((float)WindowDetails::WindowWidth / 2) + 16.f, ((float)WindowDetails::WindowHeight / 2) - 16.f,    0.0f, 1.0f, 0.0f,       0,  // bottom right
+    ((float)WindowDetails::WindowWidth / 2) - 16.f, ((float)WindowDetails::WindowHeight / 2) - 16.f,    0.0f, 0.0f, 0.0f,       0,  // bottom left
 };
 
 const unsigned int UserInterface::crosshairIndices[] = {

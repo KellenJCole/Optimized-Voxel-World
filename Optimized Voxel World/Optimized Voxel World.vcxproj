@@ -21,14 +21,13 @@
   <ItemGroup>
     <ClCompile Include="src\cpp\main.cpp" />
     <ClCompile Include="src\cpp\Player\Player.cpp" />
-    <ClCompile Include="src\cpp\Rendering\BlockGeometry.cpp" />
+    <ClCompile Include="src\cpp\Rendering\Utility\BlockGeometry.cpp" />
     <ClCompile Include="src\cpp\Rendering\Camera.cpp" />
-    <ClCompile Include="src\cpp\Rendering\GLErrorCatcher.cpp" />
+    <ClCompile Include="src\cpp\Rendering\Utility\GLErrorCatcher.cpp" />
     <ClCompile Include="src\cpp\Rendering\IndexBuffer.cpp" />
     <ClCompile Include="src\cpp\Rendering\Renderer.cpp" />
     <ClCompile Include="src\cpp\Rendering\Shader.cpp" />
     <ClCompile Include="src\cpp\Rendering\TextureArray.cpp" />
-    <ClCompile Include="src\cpp\Rendering\Transparencies.cpp" />
     <ClCompile Include="src\cpp\Rendering\UI\DebugUI.cpp" />
     <ClCompile Include="src\cpp\Rendering\UI\UserInterface.cpp" />
     <ClCompile Include="src\cpp\Rendering\VertexArray.cpp" />
@@ -62,14 +61,13 @@
     <ClInclude Include="src\h\Dear ImGui\imstb_truetype.h" />
     <ClInclude Include="src\h\FastNoise-master\FastNoise.h" />
     <ClInclude Include="src\h\Player\Player.h" />
-    <ClInclude Include="src\h\Rendering\BlockGeometry.h" />
+    <ClInclude Include="src\h\Rendering\Utility\BlockGeometry.h" />
     <ClInclude Include="src\h\Rendering\Camera.h" />
-    <ClInclude Include="src\h\Rendering\GLErrorCatcher.h" />
+    <ClInclude Include="src\h\Rendering\Utility\GLErrorCatcher.h" />
     <ClInclude Include="src\h\Rendering\IndexBuffer.h" />
     <ClInclude Include="src\h\Rendering\Renderer.h" />
     <ClInclude Include="src\h\Rendering\Shader.h" />
     <ClInclude Include="src\h\Rendering\TextureArray.h" />
-    <ClInclude Include="src\h\Rendering\Transparencies.h" />
     <ClInclude Include="src\h\Rendering\UI\DebugUI.h" />
     <ClInclude Include="src\h\Rendering\UI\UserInterface.h" />
     <ClInclude Include="src\h\Rendering\VertexArray.h" />
@@ -109,26 +107,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>

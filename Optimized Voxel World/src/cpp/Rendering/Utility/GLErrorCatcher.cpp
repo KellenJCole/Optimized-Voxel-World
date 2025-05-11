@@ -1,4 +1,4 @@
-#include "h/Rendering/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
 #include <GL/glew.h>
 #include <iostream>
 

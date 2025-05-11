@@ -1,4 +1,4 @@
-#include "h/Rendering/BlockGeometry.h"
+#include "h/Rendering/Utility/BlockGeometry.h"
 
 const float BlockGeometry::vertices[192] = {
     // Left face

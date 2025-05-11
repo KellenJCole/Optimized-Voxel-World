@@ -2,7 +2,7 @@
 #include "h/Rendering/VertexArray.h"
 #include "h/Rendering/VertexBuffer.h"
 #include "h/Rendering/VertexBufferLayout.h"
-#include "h/Rendering/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
 
 VertexArray::VertexArray() {
 

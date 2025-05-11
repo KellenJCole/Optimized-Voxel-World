@@ -65,6 +65,4 @@ private:
 	Shader postProcessingShader;
 	GLuint quadVAO, quadVBO;
 	bool usePostProcessing;
-
-	unsigned int windowWidth, windowHeight;
 };

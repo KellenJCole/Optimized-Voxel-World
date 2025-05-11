@@ -1,5 +1,5 @@
 #include "h/Rendering/UI/DebugUI.h"
-#include "h/Rendering/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
 #include "h/Rendering/Shader.h"
 
 DebugUI::DebugUI() {

@@ -60,13 +60,13 @@
     <ClCompile Include="src\cpp\Rendering\Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\Rendering\BlockGeometry.cpp">
+    <ClCompile Include="src\cpp\Rendering\Utility\BlockGeometry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\cpp\Rendering\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\Rendering\GLErrorCatcher.cpp">
+    <ClCompile Include="src\cpp\Rendering\Utility\GLErrorCatcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\cpp\Rendering\IndexBuffer.cpp">
@@ -141,18 +141,15 @@
     <ClCompile Include="src\h\Dear ImGui\imgui_widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\Rendering\Transparencies.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\h\Rendering\BlockGeometry.h">
+    <ClInclude Include="src\h\Rendering\Utility\BlockGeometry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\h\Rendering\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Rendering\GLErrorCatcher.h">
+    <ClInclude Include="src\h\Rendering\Utility\GLErrorCatcher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\h\Rendering\IndexBuffer.h">
@@ -237,9 +234,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\h\Dear ImGui\imstb_truetype.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\h\Rendering\Transparencies.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\h\Constants.h">
