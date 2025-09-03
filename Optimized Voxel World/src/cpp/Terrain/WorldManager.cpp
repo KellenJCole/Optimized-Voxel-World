@@ -507,6 +507,8 @@ glm::vec2 WorldManager::calculateTexCoords(MeshUtils::Quad& quad, int corner) {
         return glm::vec2((quad.bounds.u1 - quad.bounds.u0 + 1),  (quad.bounds.v1 - quad.bounds.v0 + 1));
 	case 3:
 		return glm::vec2(0.0f, (quad.bounds.v1 - quad.bounds.v0 + 1));
+    default:
+        break;
 	}
 }
 
