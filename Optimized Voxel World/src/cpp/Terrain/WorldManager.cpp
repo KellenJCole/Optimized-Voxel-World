@@ -1,4 +1,4 @@
-#include "h/Terrain/WorldManager.h"
+﻿#include "h/Terrain/WorldManager.h"
 #include <vector>
 #include <iostream>
 
@@ -12,12 +12,15 @@ WorldManager::WorldManager() :
 	stopAsync.store(false);
 }
 
-bool WorldManager::initialize(ProcGen* pg) {
+bool WorldManager::initialize(ProcGen* pg, VertexPool* vp) {
 
 	if (!renderer.initialize()) {
 		std::cout << "Renderer failed to initialize in World Manager\n";
 		return false;
 	}
+
+	vertexPool = vp;
+	renderer.setVertexPoolPointer(vp);
 
 	blockTextureArray = TextureArray({ "blocks/dirt.png", "blocks/grass_top.png", "blocks/grass_side.png", "blocks/stone.png", "blocks/bedrock.png", "blocks/sand.png", "blocks/water.png"}, false);
 
@@ -30,30 +33,13 @@ void WorldManager::update() {
 	glm::vec3 pos = camera->getCameraPos();
 	lightPos = { 0, 500, 0 };
 
-	if (updatedRenderChunks) {
-		updateRenderBuffers();
-	}
-
 	double now = glfwGetTime();
 	if ((now - lastFrustumCheck) >= 0.01) {
 		lastFrustumCheck = now;
 
-		std::vector<std::pair<int, int>> renderChunks = camera->getVisibleChunks(renderRadius);
-		renderer.updateRenderChunks(renderChunks);
+		currentRenderChunks = camera->getVisibleChunks(renderRadius);
+		renderer.updateRenderChunks(currentRenderChunks);
 	}
-}
-
-void WorldManager::updateRenderBuffers() {
-	std::lock(meshKeysMtx, renderBuffersMtx);
-	std::lock_guard<std::mutex> meshLock(meshKeysMtx, std::adopt_lock);
-	std::lock_guard<std::recursive_mutex> lock(renderBuffersMtx, std::adopt_lock);
-	for (auto it = meshKeysToUpdate.begin(); it != meshKeysToUpdate.end(); /* no increment here */) {
-		auto key = *it;
-		renderer.updateVertexBuffer(verticesByChunk[key], key);
-		renderer.updateIndexBuffer(indicesByChunk[key], key);
-		it = meshKeysToUpdate.erase(it);
-	}
-	updatedRenderChunks = false;
 }
 
 void WorldManager::updateRenderChunks(int originX, int originZ, int renderRadius, bool unloadAll) {
@@ -69,7 +55,6 @@ void WorldManager::updateRenderChunks(int originX, int originZ, int renderRadius
 
 	unloadChunks(loadVector, unloadAll);  // Unload before starting a new task
 
-	// Start new async task for loading chunks
 	loadFuture = std::async(std::launch::async, [this, loadVector] {
 		this->loadChunksAsync(loadVector);
 	});
@@ -108,14 +93,10 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 		int lod = calculateLevelOfDetail(key);
 		if (worldKeysSet.find(key) != worldKeysSet.end()) {
 			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-			if (worldMap[key]->getCurrentLod() != lod) {
-				worldMap[key]->convertLOD(lod);
-				updateMesh(key);
-			}
-			else {
-				genMeshForSingleChunk(key);
-				markChunkReadyForRender(key);
-				continue;
+			if (worldMap[key]->meshDirty || !worldMap[key]->meshExists) {
+				if (worldMap[key]->getCurrentLod() != lod)
+					worldMap[key]->convertLOD(lod);
+				genChunkMesh(key);
 			}
 		}
 	}
@@ -124,8 +105,8 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
 	glm::vec3 cameraPos = camera->getCameraPos();
 	ChunkCoordPair cameraKey = { 
-		ChunkUtils::convertWorldCoordToChunkCoord(static_cast<int>(floor(cameraPos.x))),
-		ChunkUtils::convertWorldCoordToChunkCoord(static_cast<int>(floor(cameraPos.z)))
+		ChunkUtils::worldToChunkCoord(static_cast<int>(floor(cameraPos.x))),
+		ChunkUtils::worldToChunkCoord(static_cast<int>(floor(cameraPos.z)))
 	};
 	
 	float distance = (float)(sqrt(pow(abs(ccp.first - cameraKey.first), 2) + pow(abs(ccp.second - cameraKey.second), 2)));
@@ -137,7 +118,7 @@ int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
 	else if (distance <= 20) {
 		return 1;
 	}
-	else if (distance <= 40) {
+	else if (distance <= 35) {
 		return 2;
 	}
 	else if (distance <= 60) {
@@ -151,51 +132,6 @@ int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
 	}
 	else {
 		return 6;
-	}
-}
-
-void WorldManager::markChunkReadyForRender(std::pair<int, int> key) {
-	std::lock_guard<std::mutex> meshLock(meshKeysMtx);
-	if (meshKeysToUpdate.find(key) == meshKeysToUpdate.end()) {
-		meshKeysToUpdate.insert(key);
-		updatedRenderChunks = true;
-	}
-}
-
-void WorldManager::genMeshForSingleChunk(ChunkCoordPair key) {
-	int lod;
-	// Find the chunk using the iterator
-	std::vector<std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>>> greedyMeshes;
-	if (worldKeysSet.find(key) != worldKeysSet.end()) {
-		if (verticesByChunk.find(key) == verticesByChunk.end()) {
-			{
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-				lod = worldMap[key]->getCurrentLod();
-				worldMap[key]->generateChunkMeshes();
-				for (int i = 0; i < 6; i++) {
-					greedyMeshes.push_back(worldMap[key]->getGreedyMeshByFaceType(i));
-				
-				}
-			}
-
-			for (int i = 0; i < 6; i++) {
-				for (const auto& meshData : greedyMeshes[i]) {
-					for (const auto& quad : meshData.first) {
-						addQuadVerticesAndIndices(quad, key, i, meshData.second, lod);
-					}
-				}
-			}
-		}
-
-		{
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-			worldMap[key]->unload();
-		}
-
-		markChunkReadyForRender(key);
-	}
-	else {
-		std::cerr << "genMeshForSingleChunk - Chunk not found or is null: (" << key.first << ", " << key.second << ")\n";
 	}
 }
 
@@ -218,9 +154,7 @@ void WorldManager::unloadChunks(const std::vector<std::pair<int, int>>& loadChun
 
 		for (const auto& key : keysToDelete) {
 			worldKeysSet.erase(key);
-			verticesByChunk.erase(key);
-			indicesByChunk.erase(key);
-			renderer.eraseBuffers(key);
+			vertexPool->freeBucket(key);
 			worldMap.erase(key);
 		}
 	}
@@ -231,26 +165,15 @@ void WorldManager::unloadChunks(const std::vector<std::pair<int, int>>& loadChun
 
 		for (const auto& key : worldMap) {
 			worldKeysSet.erase(key.first);
-			verticesByChunk.erase(key.first);
-			indicesByChunk.erase(key.first);
-			renderer.eraseBuffers(key.first);
+			vertexPool->freeBucket(key.first);
 		}
 		worldMap.clear();
 	}
 }
 
-void WorldManager::setCamAndShaderPointers(Shader* sha, Camera* cam) {
-	shader = sha;
-	camera = cam;
-}
-
-void WorldManager::cleanup() {
-	renderer.cleanup();
-}
-
-unsigned char WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, int prevLod, int face) {
-	int chunkX = ChunkUtils::convertWorldCoordToChunkCoord(worldX);
-	int chunkZ = ChunkUtils::convertWorldCoordToChunkCoord(worldZ);
+BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, int prevLod, int face) {
+	int chunkX = ChunkUtils::worldToChunkCoord(worldX);
+	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
 	std::pair<int, int> key = { chunkX, chunkZ };
 
 	if (worldKeysSet.find(key) != worldKeysSet.end()) {
@@ -289,293 +212,305 @@ unsigned char WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ,
 		}
 	}
 	else {
-		// Attempted to access a chunk that doesn't exist
-		return 69;
+		return BlockID::NONE;
 	}
 }
 
 void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
-	int chunkX = ChunkUtils::convertWorldCoordToChunkCoord(worldX);
-	int chunkZ = ChunkUtils::convertWorldCoordToChunkCoord(worldZ);
-	std::pair<int, int> key = { chunkX, chunkZ };
+	int chunkX = ChunkUtils::worldToChunkCoord(worldX);
+	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
+	ChunkCoordPair key = { chunkX, chunkZ };
 	{
 
 		if (worldKeysSet.find(key) != worldKeysSet.end()) {
 			int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
 			int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
+
 			{
 				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 				worldMap[key]->breakBlock(localX, worldY, localZ);
+				worldMap[key]->meshDirty = true;
 			}
-			updateMesh(key);
+
+			genChunkMesh(key);
+
 			// Update neighboring chunks if necessary
 			if (localX == 0) {
-				updateMesh({ key.first - 1, key.second });
+				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+				worldMap[{ key.first - 1, key.second }]->meshDirty = true;
+				genChunkMesh({ key.first - 1, key.second });
 			}
 			else if (localX == ChunkUtils::WIDTH - 1) {
-				updateMesh({ key.first + 1, key.second });
+				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+				worldMap[{ key.first + 1, key.second }]->meshDirty = true;
+				genChunkMesh({ key.first + 1, key.second });
 			}
+
 			if (localZ == 0) {
-				updateMesh({ key.first, key.second - 1 });
+				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+				worldMap[{ key.first, key.second - 1}]->meshDirty = true;
+				genChunkMesh({ key.first, key.second - 1 });
 			}
 			else if (localZ == ChunkUtils::DEPTH - 1) {
-				updateMesh({ key.first, key.second + 1 });
-			}
-		}
-	}
-}
-
-void WorldManager::placeBlock(int worldX, int worldY, int worldZ, unsigned char blockToPlace) {
-	int chunkX = ChunkUtils::convertWorldCoordToChunkCoord(worldX);
-	int chunkZ = ChunkUtils::convertWorldCoordToChunkCoord(worldZ);
-	std::pair<int, int> key = { chunkX, chunkZ };
-	{
-		if (worldKeysSet.find(key) != worldKeysSet.end()) {
-			// Calculate local coordinates
-			int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
-			int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
-			{
 				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-				worldMap[key]->placeBlock(localX, worldY, localZ, blockToPlace);
-			}
-			updateMesh(key);
-			// Update neighboring chunks if necessary
-			if (localX == 0) {
-				updateMesh({ key.first - 1, key.second });
-			}
-			if (localX == ChunkUtils::WIDTH - 1) {
-				updateMesh({ key.first + 1, key.second });
-			}
-			if (localZ == 0) {
-				updateMesh({ key.first, key.second - 1 });
-			}
-			if (localZ == ChunkUtils::DEPTH - 1) {
-				updateMesh({ key.first, key.second + 1 });
+				worldMap[{ key.first, key.second + 1 }]->meshDirty = true;
+				genChunkMesh({ key.first, key.second + 1 });
 			}
 		}
 	}
 }
 
-void WorldManager::updateMesh(ChunkCoordPair key) {
-	int lod;
+void WorldManager::placeBlock(int worldX, int worldY, int worldZ, BlockID blockToPlace) {
+	int chunkX = ChunkUtils::worldToChunkCoord(worldX);
+	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
+	ChunkCoordPair key = { chunkX, chunkZ };
+
 	if (worldKeysSet.find(key) != worldKeysSet.end()) {
-		{
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-			lod = worldMap[key]->getCurrentLod();
-			worldMap[key]->generateChunkMeshes();
-		}
-		{
-			std::lock_guard<std::recursive_mutex> renderLock(renderBuffersMtx);
-			verticesByChunk.erase(key);
-			indicesByChunk.erase(key);
-		}
-		std::vector<std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>>> greedyMeshes;
-		{
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-			for (int i = 0; i < 6; i++) {
-				greedyMeshes.push_back(worldMap[key]->getGreedyMeshByFaceType(i));
-
-			}
-		}
-
-		for (int i = 0; i < 6; i++) {
-			for (const auto& meshData : greedyMeshes[i]) {
-				for (const auto& quad : meshData.first) {
-					addQuadVerticesAndIndices(quad, key, i, meshData.second, lod);
-				}
-			}
-		}
+		int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
+		int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
 
 		{
 			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-			worldMap[key]->unload();
+			worldMap[key]->placeBlock(localX, worldY, localZ, blockToPlace);
+			worldMap[key]->meshDirty = true;
 		}
 
-		markChunkReadyForRender(key);
-	}
-	else {
-		std::cerr << "updateMesh - Chunk not found or is null: (" << key.first << ", " << key.second << ")\n";
+		genChunkMesh(key);
+
+		if (localX == 0) {
+			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+			worldMap[{ key.first - 1, key.second }]->meshDirty = true;
+			genChunkMesh({ key.first - 1, key.second });
+		}
+		else if (localX == ChunkUtils::WIDTH - 1) {
+			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+			worldMap[{ key.first + 1, key.second }]->meshDirty = true;
+			genChunkMesh({ key.first + 1, key.second });
+		}
+
+		if (localZ == 0) {
+			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+			worldMap[{ key.first, key.second - 1}]->meshDirty = true;
+			genChunkMesh({ key.first, key.second - 1 });
+		}
+		else if (localZ == ChunkUtils::DEPTH - 1) {
+			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+			worldMap[{ key.first, key.second + 1 }]->meshDirty = true;
+			genChunkMesh({ key.first, key.second + 1 });
+		}
 	}
 }
 
-void WorldManager::addQuadVerticesAndIndices(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>> quad, ChunkCoordPair chunkCoords, int faceType, int offset, int levelOfDetail) {
+void WorldManager::genChunkMesh(ChunkCoordPair key) {
+	// Check if the chunk exists in the worldKeysSet
+	if (worldKeysSet.find(key) == worldKeysSet.end()) {
+		std::cerr << "genMeshForSingleChunk - Chunk not found or is null: (" << key.first << ", " << key.second << ")\n";
+		return;
+	}
+
+	// Check/set chunk's mesh states
+	int lod;
+	Chunk* chunk;
+	{
+		std::lock_guard<std::recursive_mutex> lock(worldMapMtx);
+		chunk = worldMap[key].get();
+		if (!chunk->meshDirty && chunk->meshExists)
+			return;
+		chunk->meshExists = true;
+		chunk->meshDirty = false;
+		lod = chunk->getCurrentLod();
+		chunk->startMeshing();
+		chunk->greedyMesh();
+	}
+
+	// Release mesh from GPU if it exists
+	vertexPool->freeBucket(key);
+
+	MeshUtils::FaceMeshGraphs greedyMeshes;
+
+	{
+		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+		
+		for (size_t f = 0; f < MeshUtils::FACE_COUNT; ++f) {
+			greedyMeshes[f] = worldMap[key]->getMeshGraph(static_cast<BlockFace>(f));
+        }
+	}
+
+	std::vector<Vertex> verts;
+	std::vector<unsigned int> inds;
+	unsigned int baseIndex = 0;
+
+	for (size_t face = 0; face < MeshUtils::FACE_COUNT; face++) {
+		for (const auto& slice : greedyMeshes[face]) {
+            int sliceIdx = slice.sliceIndex;
+			for (const auto& quad : slice.quads) {
+				addVerticesForQuad(
+					verts, inds, 
+					quad, 
+					key, 
+					face, 
+					sliceIdx, 
+					lod, 
+					baseIndex
+				);
+				baseIndex += 4;
+			}
+		}
+	}
+
+	vertexPool->allocateBucket(key, verts.size() * sizeof(Vertex), inds.size());
+	vertexPool->updateVertices(key, verts.data(), verts.size() * sizeof(Vertex));
+	vertexPool->updateIndices(key, inds.data(), inds.size());
+
+	{
+		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+		worldMap[key]->unload();
+	}
+}
+
+void WorldManager::addVerticesForQuad(std::vector<Vertex>& verts, std::vector<unsigned int>& inds, MeshUtils::Quad quad, ChunkCoordPair chunkCoords,
+        size_t faceType, int sliceIndex, int levelOfDetail, unsigned int baseIndex) {
 	// Calculate positions for each corner of the quad
-	glm::vec3 bottomLeft = calculatePosition(quad, 0, faceType, chunkCoords, offset, levelOfDetail);
-	glm::vec3 bottomRight = calculatePosition(quad, 1, faceType, chunkCoords, offset, levelOfDetail);
-	glm::vec3 topLeft = calculatePosition(quad, 2, faceType, chunkCoords, offset, levelOfDetail);
-	glm::vec3 topRight = calculatePosition(quad, 3, faceType, chunkCoords, offset, levelOfDetail);
+	glm::vec3 bl = calculatePosition(quad, 0, faceType, chunkCoords, sliceIndex, levelOfDetail);
+    glm::vec3 br = calculatePosition(quad, 1, faceType, chunkCoords, sliceIndex, levelOfDetail);
+    glm::vec3 tl = calculatePosition(quad, 2, faceType, chunkCoords, sliceIndex, levelOfDetail);
+    glm::vec3 tr = calculatePosition(quad, 3, faceType, chunkCoords, sliceIndex, levelOfDetail);
 
 	// Calculate texture coordinates for each corner
-	glm::vec2 texCoordsBL = calculateTexCoords(quad, 0);
-	glm::vec2 texCoordsBR = calculateTexCoords(quad, 1);
-	glm::vec2 texCoordsTL = calculateTexCoords(quad, 2);
-	glm::vec2 texCoordsTR = calculateTexCoords(quad, 3);
+	glm::vec2 texBL = calculateTexCoords(quad, 0);
+	glm::vec2 texBR = calculateTexCoords(quad, 1);
+	glm::vec2 texTL = calculateTexCoords(quad, 2);
+	glm::vec2 texTR = calculateTexCoords(quad, 3);
 
 	// Define normal based on face type
-	int normal = faceType + 1;
+	int normal = static_cast<int>(faceType);
+	BlockTextureID tex = quad.tex;
 
 	// Add vertices for the quad
-	std::lock_guard<std::recursive_mutex> renderLock(renderBuffersMtx);
-	unsigned int indexStart = verticesByChunk[chunkCoords].size();
-	verticesByChunk[chunkCoords].push_back(Vertex{ bottomLeft, texCoordsBL, normal + (int)quad.first * 16 });
-	verticesByChunk[chunkCoords].push_back(Vertex{ bottomRight, texCoordsBR, normal + (int)quad.first * 16 });
-	verticesByChunk[chunkCoords].push_back(Vertex{ topRight, texCoordsTR, normal + (int)quad.first * 16 });
-	verticesByChunk[chunkCoords].push_back(Vertex{ topLeft, texCoordsTL, normal + (int)quad.first * 16 });
+    verts.push_back(Vertex{bl, texBL, normal + static_cast<int>(tex) * 16});
+    verts.push_back(Vertex{br, texBR, normal + static_cast<int>(tex) * 16});
+    verts.push_back(Vertex{tr, texTR, normal + static_cast<int>(tex) * 16});
+    verts.push_back(Vertex{tl, texTL, normal + static_cast<int>(tex) * 16});
 
 	// Add indices for two triangles making up the quad
 	switch (faceType) {
-	case 0:
-	case 2:
-	case 5:
-		indicesByChunk[chunkCoords].push_back(indexStart + 2);
-		indicesByChunk[chunkCoords].push_back(indexStart + 1);
-		indicesByChunk[chunkCoords].push_back(indexStart);
-
-		indicesByChunk[chunkCoords].push_back(indexStart + 2);
-		indicesByChunk[chunkCoords].push_back(indexStart + 3);
-		indicesByChunk[chunkCoords].push_back(indexStart + 1);
+	case 0: case 2: case 5:
+		inds.insert(inds.end(), { baseIndex + 2, baseIndex + 1, baseIndex + 0,
+								  baseIndex + 2, baseIndex + 3, baseIndex + 1 });
 		break;
-	case 1:
-	case 3:
-	case 4:
-	indicesByChunk[chunkCoords].push_back(indexStart);     
-    indicesByChunk[chunkCoords].push_back(indexStart + 1); 
-    indicesByChunk[chunkCoords].push_back(indexStart + 2); 
-
-    indicesByChunk[chunkCoords].push_back(indexStart + 1);     
-	indicesByChunk[chunkCoords].push_back(indexStart + 3); 
-    indicesByChunk[chunkCoords].push_back(indexStart + 2); 
-    break;
+	case 1: case 3: case 4:
+		inds.insert(inds.end(), { baseIndex + 0, baseIndex + 1, baseIndex + 2,
+								  baseIndex + 1, baseIndex + 3, baseIndex + 2 });
+		break;
 	}
 }
 
-glm::vec3 WorldManager::calculatePosition(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner, int faceType, ChunkCoordPair cxcz, int offset, int levelOfDetail) {
+glm::vec3 WorldManager::calculatePosition(MeshUtils::Quad& quad, int corner, size_t faceType, ChunkCoordPair cxcz, int sliceIndex, int levelOfDetail) {
 	int blockResolution = 1 << levelOfDetail;
 
 	int startX = cxcz.first * ChunkUtils::WIDTH;
 	int startZ = cxcz.second * ChunkUtils::DEPTH;
-	int firstFirstConvert = q.second.first.first * blockResolution;
-	int secondFirstConvert = q.second.second.first * blockResolution;
-	int firstSecondConvert = q.second.first.second * blockResolution;
-	int secondSecondConvert = q.second.second.second * blockResolution;
-	int offsetConverted = offset * blockResolution;
 
-	int xOffset = startX + offsetConverted;
-	int xOffset1 = xOffset + blockResolution;
+	int u0 = quad.bounds.u0 * blockResolution;
+    int v0 = quad.bounds.v0 * blockResolution;
+	int u1 = quad.bounds.u1 * blockResolution;
+	int v1 = quad.bounds.v1 * blockResolution;
 
-	int yOffset = offsetConverted;
-	int yOffset1 = yOffset + blockResolution;
+	int sliceConverted = sliceIndex * blockResolution;
 
-	int zOffset = startZ + offsetConverted;
-	int zOffset1 = zOffset + blockResolution;
+	int sliceXNeg = startX + sliceConverted;
+    int sliceXPos = sliceXNeg + blockResolution;
+
+	int sliceYNeg = sliceConverted;
+    int sliceYPos = sliceYNeg + blockResolution;
+
+	int sliceZNeg = startZ + sliceConverted;
+    int sliceZPos = sliceZNeg + blockResolution;
 
 	// x face variables
-	int xy = firstFirstConvert;
-	int xy1 = firstSecondConvert + blockResolution;
-	int xz = startZ + secondFirstConvert;
-	int xz1 = startZ + secondSecondConvert + blockResolution;
+	int xy = u0;
+	int xy1 = u1 + blockResolution;
+	int xz = startZ + v0;
+	int xz1 = startZ + v1 + blockResolution;
 
 	// y face variables
 
-	int yx = startX + secondFirstConvert;
-	int yx1 = startX + secondSecondConvert + blockResolution;
-	int yz = startZ + firstFirstConvert;
-	int yz1 = startZ + firstSecondConvert + blockResolution;
+	int yx = startX + v0;
+	int yx1 = startX + v1 + blockResolution;
+	int yz = startZ + u0;
+	int yz1 = startZ + u1 + blockResolution;
 
 	// z face variables
-	int zx = startX + secondFirstConvert;
-	int zx1 = startX + secondSecondConvert + blockResolution;
-	int zy = firstFirstConvert;
-	int zy1 = firstSecondConvert + blockResolution;
+	int zx = startX + v0;
+	int zx1 = startX + v1 + blockResolution;
+	int zy = u0;
+	int zy1 = u1 + blockResolution;
+
+	std::unordered_map<int, int> sliceMap;
+
+    sliceMap[0] = sliceXNeg;
+    sliceMap[1] = sliceXPos;
+    sliceMap[2] = sliceYNeg;
+    sliceMap[3] = sliceYPos;
+    sliceMap[4] = sliceZNeg;
+    sliceMap[5] = sliceZPos;
 
 	switch (faceType) {
-	case 0:
+    case 0:
+    case 1:
 		switch (corner) {
 		case 0:
-			return glm::vec3(xOffset,		xy,				xz);
+             return glm::vec3(sliceMap[faceType],	xy,						xz);
 		case 1:
-			return glm::vec3(xOffset,		xy1,			xz);
+             return glm::vec3(sliceMap[faceType],	xy1,					xz);
 		case 2:
-			return glm::vec3(xOffset,		xy1,			xz1);
+             return glm::vec3(sliceMap[faceType],	xy1,					xz1);
 		case 3:
-			return glm::vec3(xOffset,		xy,				xz1);
-		}
-
-	case 1:
-		switch (corner) {
-		case 0:
-			return glm::vec3(xOffset1,		xy,				xz);
-		case 1:
-			return glm::vec3(xOffset1,		xy1,			xz);
-		case 2:
-			return glm::vec3(xOffset1,		xy1,			xz1);
-		case 3:
-			return glm::vec3(xOffset1,		xy,				xz1);
+             return glm::vec3(sliceMap[faceType],	xy,						xz1);
 		}
 	case 2:
+    case 3:
 		switch (corner) {
 		case 0:
-			return glm::vec3(yx,			yOffset,		yz);
+             return glm::vec3(yx,					sliceMap[faceType],		yz);
 		case 1:
-			return glm::vec3(yx,			yOffset,		yz1);
+             return glm::vec3(yx,					sliceMap[faceType],		yz1);
 		case 2:
-			return glm::vec3(yx1,			yOffset,		yz1);
+             return glm::vec3(yx1,					sliceMap[faceType],		yz1);
 		case 3:
-			return glm::vec3(yx1,			yOffset,		yz);
-		}
-	case 3:
-		switch (corner) {
-		case 0:
-			return glm::vec3(yx,			yOffset1,		yz);
-		case 1:
-			return glm::vec3(yx,			yOffset1,		yz1);
-		case 2:
-			return glm::vec3(yx1,			yOffset1,		yz1);
-		case 3:
-			return glm::vec3(yx1,			yOffset1,		yz);
+             return glm::vec3(yx1,					sliceMap[faceType],		yz);
 		}
 	case 4:
+    case 5:
 		switch (corner) {
 		case 0:
-			return glm::vec3(zx,			zy,				zOffset);
+			return glm::vec3(zx,					zy,						sliceMap[faceType]);
 		case 1:
-			return glm::vec3(zx,			zy1,			zOffset);
+			return glm::vec3(zx,					zy1,					sliceMap[faceType]);
 		case 2:
-			return glm::vec3(zx1,			zy1,			zOffset);
+			return glm::vec3(zx1,					zy1,					sliceMap[faceType]);
 		case 3:
-			return glm::vec3(zx1,			zy,				zOffset);
-		}
-	case 5:
-		switch (corner) {
-		case 0:
-			return glm::vec3(zx,			zy,				zOffset1);
-		case 1:
-			return glm::vec3(zx,			zy1,			zOffset1);
-		case 2:
-			return glm::vec3(zx1,			zy1,			zOffset1);
-		case 3:
-			return glm::vec3(zx1,			zy,				zOffset1);
+			return glm::vec3(zx1,					zy,						sliceMap[faceType]);
 		}
 	default:
-		return glm::vec3(NULL, NULL, NULL);
+		return glm::vec3(NULL,						NULL,					NULL);
 	}
 }
 
-glm::vec2 WorldManager::calculateTexCoords(std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>& q, int corner) {
+glm::vec2 WorldManager::calculateTexCoords(MeshUtils::Quad& quad, int corner) {
 	switch (corner) {
 	case 0:
 		return glm::vec2(0.0f, 0.0f);
 	case 1:
-		return glm::vec2((q.second.first.second - q.second.first.first + 1), 0.0f);
+		return glm::vec2((quad.bounds.u1 - quad.bounds.u0 + 1), 0.0f);
 	case 2:
-		return glm::vec2((q.second.first.second - q.second.first.first + 1), (q.second.second.second - q.second.second.first + 1));
+        return glm::vec2((quad.bounds.u1 - quad.bounds.u0 + 1),  (quad.bounds.v1 - quad.bounds.v0 + 1));
 	case 3:
-		return glm::vec2(0.0f, (q.second.second.second - q.second.second.first + 1));
+		return glm::vec2(0.0f, (quad.bounds.v1 - quad.bounds.v0 + 1));
 	}
 }
 
 void WorldManager::render() {
-
 	blockTextureArray.Bind();
 
 	shader->setUniform4fv("view", (glm::mat4&)camera->getView());
@@ -588,29 +523,15 @@ void WorldManager::render() {
 	renderer.render();
 }
 
-void WorldManager::switchRenderMethod() {
-	renderer.toggleFillLine();
-}
-
-void WorldManager::passWindowPointerToRenderer(GLFWwindow* window) {
-	renderer.setWindowPointer(window);
-}
-
-std::vector<unsigned char> WorldManager::getChunkVector(ChunkCoordPair key) {
-	std::vector<unsigned char> defaultReturn;
-	defaultReturn.resize(1); 
+std::vector<BlockID> WorldManager::getChunkVector(ChunkCoordPair key) {
+	std::vector<BlockID> empty;
+	empty.resize(1);
 
 	std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-
 	if (worldMap.find(key) != worldMap.end()) {
-		std::vector<unsigned char> result = worldMap[key]->getCurrChunkVec();
+		std::vector<BlockID> result = worldMap[key]->getCurrChunkVec();
 		return result;
 	}
-	else {
-		return defaultReturn;
-	}
-}
-
-bool WorldManager::getReadyForPlayerUpdate() {
-	return readyForPlayerUpdate;
+	else
+		return empty;
 }

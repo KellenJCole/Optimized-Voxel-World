@@ -1,9 +1,10 @@
 #pragma once
 #include <vector>
 #include <string>
-#include "h/Constants.h"
-#include "h/FastNoise-master/FastNoise.h"
-#include "h/glm/glm.hpp"
+#include "h/Terrain/Utility/ChunkUtils.h"
+#include "h/Terrain/Utility/BlockID.h"
+#include "h/external/FastNoise-master/FastNoise.h"
+#include "h/external/glm/glm.hpp"
 #include <set>
 #include <map>
 #include <mutex>
@@ -12,7 +13,7 @@
 class ProcGen {
 public:
 	ProcGen();
-	int generateChunk(std::vector<unsigned char>& chunkVec, std::pair<int, int> chunkCoordPair, int levelOfDetail);
+	int generateChunk(std::vector<BlockID>& chunkVector, std::pair<int, int> chunkCoordPair, int levelOfDetail);
 	void setNoiseState(std::vector<float> state);
 	void setRandomNoiseState();
 private:

@@ -3,8 +3,8 @@
 #define SHADER_H
 
 #include <string>
-#include <h/glm/glm.hpp> 
-#include <h/glm/gtc/type_ptr.hpp> 
+#include <h/external/glm/glm.hpp> 
+#include <h/external/glm/gtc/type_ptr.hpp> 
 
 class Shader {
 public:

@@ -2,18 +2,32 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
-#include "h/Constants.h"
+#include "h/Terrain/Utility/ChunkUtils.h"
+#include "h/Terrain/Utility/BlockID.h"
+#include "h/Rendering/Utility/MeshUtils.h"
+#include "h/Rendering/Utility/BlockTextureLUT.h"
 
-enum BlockFace;
 class GreedyAlgorithm {
 public:
 	GreedyAlgorithm();
-	void populatePlanes(std::map<BlockFace, std::vector<unsigned int>>& vb, std::vector<unsigned char>& c, int levelOfDetail);
+
+	void populatePlanes(
+		std::map<BlockFace, std::vector<unsigned int>>& visibleBlockIndexes, 
+		std::vector<BlockID>& chunkData, 
+		int levelOfDetail
+	);
+
 	void firstPassOn(BlockFace f);
-	std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> getAllGreedyGraphs(int faceType);
+
+	const MeshUtils::MeshGraph& getMeshGraph(BlockFace f) const;
+
 	void unload();
 private:
-	std::unordered_map<BlockFace, std::vector<std::pair<int, std::vector<std::vector<unsigned char>>>>> planes;
-	std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> Greedy_Graphs[6];
-	void assignCoordinates(BlockFace face, int unknownCoord1, int unknownCoord2, int unknownCoord3, int& x, int& y, int& z);
+
+	std::array<std::vector<MeshUtils::Plane>, MeshUtils::FACE_COUNT> _planes;
+	MeshUtils::FaceMeshGraphs _greedyGraphs;
+
+	void assignCoordinates(BlockFace face, 
+		int localX, int localY, int localZ, 
+		int& u, int& v, int& sliceIndex);
 };

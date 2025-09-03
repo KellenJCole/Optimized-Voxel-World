@@ -24,10 +24,6 @@ void Camera::update()
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
 
-void Camera::setMode(bool fly) {
-	mode = fly;
-}
-
 void Camera::processKeyboardInput(std::map<unsigned int, bool> keyStates, float deltaTime)
 {
 	float camSpeed;
@@ -101,8 +97,8 @@ std::vector<std::pair<int, int>> Camera::getVisibleChunks(int renderDistance) {
 	std::vector<std::pair<int, int>> visibleChunks;
 	auto planes = calculateFrustumPlanes();
 
-	int centerX = ChunkUtils::convertWorldCoordToChunkCoord(static_cast<int>(floor(cameraPos.x)));
-	int centerZ = ChunkUtils::convertWorldCoordToChunkCoord(static_cast<int>(floor(cameraPos.z)));
+	int centerX = ChunkUtils::worldToChunkCoord(static_cast<int>(floor(cameraPos.x)));
+	int centerZ = ChunkUtils::worldToChunkCoord(static_cast<int>(floor(cameraPos.z)));
 
 	for (int x = centerX - renderDistance; x <= centerX + renderDistance; ++x) {
 		for (int z = centerZ - renderDistance; z <= centerZ + renderDistance; ++z) {

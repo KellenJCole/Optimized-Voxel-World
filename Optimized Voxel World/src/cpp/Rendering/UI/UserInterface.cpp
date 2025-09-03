@@ -1,32 +1,45 @@
 #pragma once
 #include "h/Rendering/UI/UserInterface.h"
+
 #include "h/Rendering/Shader.h"
 #include "h/Rendering/Utility/GLErrorCatcher.h"
-#include "h/Constants.h"
+#include "h/Rendering/Utility/WindowConfig.h"
 
-const float UserInterface::crosshairVertices[4][6] = {
-    // positions                                                                                        // texture coords       //texture id
-    ((float)WindowDetails::WindowWidth / 2) - 16.f, ((float)WindowDetails::WindowHeight / 2) + 16.f,    0.0f, 0.0f, 1.0f,       0,  // top left 
-    ((float)WindowDetails::WindowWidth / 2) + 16.f, ((float)WindowDetails::WindowHeight / 2) + 16.f,    0.0f, 1.0f, 1.0f,       0,  // top right
-    ((float)WindowDetails::WindowWidth / 2) + 16.f, ((float)WindowDetails::WindowHeight / 2) - 16.f,    0.0f, 1.0f, 0.0f,       0,  // bottom right
-    ((float)WindowDetails::WindowWidth / 2) - 16.f, ((float)WindowDetails::WindowHeight / 2) - 16.f,    0.0f, 0.0f, 0.0f,       0,  // bottom left
+const float UserInterface::crosshairVertices[4]
+                                            [6] = {
+                                                // positions // texture coords       //texture id
+                                                ((float)WindowDetails::WindowWidth / 2) - 16.f,
+                                                ((float)WindowDetails::WindowHeight / 2) + 16.f,
+                                                0.0f,
+                                                0.0f,
+                                                1.0f,
+                                                0,  // top left
+                                                ((float)WindowDetails::WindowWidth / 2) + 16.f,
+                                                ((float)WindowDetails::WindowHeight / 2) + 16.f,
+                                                0.0f,
+                                                1.0f,
+                                                1.0f,
+                                                0,  // top right
+                                                ((float)WindowDetails::WindowWidth / 2) + 16.f,
+                                                ((float)WindowDetails::WindowHeight / 2) - 16.f,
+                                                0.0f,
+                                                1.0f,
+                                                0.0f,
+                                                0,  // bottom right
+                                                ((float)WindowDetails::WindowWidth / 2) - 16.f,
+                                                ((float)WindowDetails::WindowHeight / 2) - 16.f,
+                                                0.0f,
+                                                0.0f,
+                                                0.0f,
+                                                0,  // bottom left
 };
 
-const unsigned int UserInterface::crosshairIndices[] = {
-    0, 1, 2,
-    2, 3, 0
-};
+const unsigned int UserInterface::crosshairIndices[] = {0, 1, 2, 2, 3, 0};
 
-UserInterface::UserInterface() :
-    va(0),
-    vb(0),
-    eb(0)
-{
-
-}
+UserInterface::UserInterface() : va(0), vb(0), eb(0) {}
 
 bool UserInterface::initialize() {
-    textureArray = TextureArray({ "User Interface/crosshair.png" }, false);
+    textureArray = TextureArray({"User Interface/crosshair.png"}, false);
     GLCall(glGenVertexArrays(1, &va));
     GLCall(glBindVertexArray(va));
 
@@ -42,7 +55,7 @@ bool UserInterface::initialize() {
 
     // Specify the layout of the vertex data
     GLCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0));
-    GLCall(glEnableVertexAttribArray(0)); // Position attribute
+    GLCall(glEnableVertexAttribArray(0));  // Position attribute
     GLCall(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float))));
     GLCall(glEnableVertexAttribArray(1));
     GLCall(glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(5 * sizeof(float))));
@@ -50,14 +63,13 @@ bool UserInterface::initialize() {
     return true;
 }
 
-
 // Simply rendering a bunch of quads in 2D on screen
 void UserInterface::render(Shader& s) {
     GLCall(glDisable(GL_DEPTH_TEST));
     GLCall(glDisable(GL_CULL_FACE));
 
     textureArray.Bind();
-	s.use();
+    s.use();
     GLCall(glBindVertexArray(va));
     GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eb));
     GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));

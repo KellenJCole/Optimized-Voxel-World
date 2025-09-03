@@ -1,13 +1,10 @@
-#include "h/VoxelEngine.h"
 #include <iostream>
+
+#include "h/VoxelEngine.h"
 
 int main() {
 	VoxelEngine engine;
-	if (!engine.initialize()) {
-		std::cout << "Failed to initialize Voxel Engine. aborting.\n";
-		return -1;
-	}
-
+	engine.initialize();
 	engine.run();
 
 	return 0;

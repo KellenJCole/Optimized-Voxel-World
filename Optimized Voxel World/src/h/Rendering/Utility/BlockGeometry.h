@@ -1,5 +1,5 @@
 #pragma once
-#include <h/glm/glm.hpp>
+#include <h/external/glm/glm.hpp>
 
 struct Vertex {
 	glm::vec3 position;

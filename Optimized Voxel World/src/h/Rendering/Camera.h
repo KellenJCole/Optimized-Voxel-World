@@ -1,8 +1,9 @@
 #pragma once
-#include "h/glm/glm.hpp"
-#include "h/glm/gtc/matrix_access.hpp"
-#include "h/glm/gtc/matrix_transform.hpp"
-#include "h/Constants.h"
+#include "h/external/glm/glm.hpp"
+#include "h/external/glm/gtc/matrix_access.hpp"
+#include "h/external/glm/gtc/matrix_transform.hpp"
+#include "h/Rendering/Utility/WindowConfig.h"
+#include "h/Terrain/Utility/ChunkUtils.h"
 #include <array>
 #include <vector>
 #include <map>
@@ -21,7 +22,7 @@ public:
 
 	void setCameraPos(glm::vec3 pos);
 
-	void setMode(bool fly);
+	inline void setMode(bool fly) { mode = fly; }
 
 	// Getters for camera properties
 	glm::vec3 getCameraPos() const { return cameraPos; }

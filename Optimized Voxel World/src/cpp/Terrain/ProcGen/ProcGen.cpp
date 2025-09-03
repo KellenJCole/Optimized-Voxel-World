@@ -29,7 +29,7 @@ ProcGen::ProcGen() :
 	heightMapWeights[3] = .1f;
 }
 
-int ProcGen::generateChunk(std::vector<unsigned char>& chunkVec, std::pair<int, int> chunkCoordPair, int levelOfDetail) {
+int ProcGen::generateChunk(std::vector<BlockID>& chunkVec, std::pair<int, int> chunkCoordPair, int levelOfDetail) {
 	std::lock_guard<std::mutex> procGenLock(procGenMutex);
 	setLODVariables(levelOfDetail);
 	std::vector<std::vector<float>> hm = getHeightMap(chunkCoordPair);
@@ -51,23 +51,23 @@ int ProcGen::generateChunk(std::vector<unsigned char>& chunkVec, std::pair<int, 
 
 				if (worldY <= convertHeight) {
 					if (y <= convertHeight && normalizedHeight < 0.2f) {
-						chunkVec[index] = 4; // Bedrock
+						chunkVec[index] = BlockID::BEDROCK;
 					}
 					else if (y <= convertHeight && normalizedHeight < 0.4f) {
-						chunkVec[index] = 3; // Stone
+						chunkVec[index] = BlockID::STONE;
 					}
 					else if (y <= convertHeight) {
-						chunkVec[index] = 1; // Dirt
+						chunkVec[index] = BlockID::DIRT;
 					}
 					highestIndex = index;
 				}
 				else {
-					chunkVec[index] = 0; // Air
+					chunkVec[index] = BlockID::AIR;
 				}
 			}
 
-			if (highestIndex != -1 && chunkVec[highestIndex] == 1) {
-				chunkVec[highestIndex] = 2; // Grass
+			if (highestIndex != -1 && chunkVec[highestIndex] == BlockID::DIRT) {
+				chunkVec[highestIndex] = BlockID::GRASS;
 			}
 			if (highestIndex > highestOccupiedIndex) {
 				highestOccupiedIndex = highestIndex;

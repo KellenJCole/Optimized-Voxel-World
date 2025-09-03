@@ -6,19 +6,21 @@
 #include <sstream>
 #include <iomanip>
 
-VoxelEngine::VoxelEngine() :
-    deltaTime(0.0f),
-    lastFrame(0.0f),
-    fps(0),
-    renderDebug(false),
-    imGuiCursor(false),
-    usePostProcessing(true),
-    renderRadius(64) {
+VoxelEngine::VoxelEngine() 
+    : deltaTime(0.0f)
+    , lastFrame(0.0f)
+    , fps(0)
+    , renderDebug(false)
+    , imGuiCursor(false)
+    , usePostProcessing(true)
+    , renderRadius(64)
+    , vertexPool(4ULL * 1024 * 1024 * 1024) 
+{
 
-    currChunkX = (camera.getCameraPos().x < 0 ? camera.getCameraPos().x - ChunkUtils::WIDTH : camera.getCameraPos().x) / ChunkUtils::WIDTH;
-    currChunkZ = (camera.getCameraPos().z < 0 ? camera.getCameraPos().z - ChunkUtils::DEPTH : camera.getCameraPos().z) / ChunkUtils::DEPTH;
+	currChunkX = ChunkUtils::worldToChunkCoord(static_cast<int>(floor(camera.getCameraPos().x)));
+	currChunkZ = ChunkUtils::worldToChunkCoord(static_cast<int>(floor(camera.getCameraPos().z)));
     lastChunkX = currChunkX;
-    lastChunkZ = lastChunkZ;
+    lastChunkZ = currChunkZ;
 
     fpsUpdateTime = .1;
 
@@ -43,20 +45,14 @@ bool VoxelEngine::initialize() {
         return false;
     }
 
-    glfwMakeContextCurrent(window); // Create the OpenGL context
+    glfwMakeContextCurrent(window);
     glfwSetWindowUserPointer(window, this);
-
-    glfwSwapInterval(0); // V-SYNC
-
+    glfwSwapInterval(0);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
     glfwSetCursorPosCallback(window, cursor_position_callback);
-
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
     glfwWindowHint(GLFW_SAMPLES, 4);
 
     if (glewInit() != GLEW_OK) {
@@ -66,19 +62,21 @@ bool VoxelEngine::initialize() {
 
     std::cout << glGetString(GL_VERSION) << "\n";
 
-    if (!worldManager.initialize(&proceduralGeneration)) {
-        std::cout << "World Manager initialization failure\n";
+    if (!vertexPool.initialize()) {
+        std::cerr << "VertexPool failed to initialize.\n";
+        return false;
     }
+
+    if (!worldManager.initialize(&proceduralGeneration, &vertexPool))
+        std::cout << "World Manager initialization failure\n";
+
     blockShader = Shader("src/res/shaders/Block.shader");
     debugShader = Shader("src/res/shaders/Debug.shader");
     userInterfaceShader = Shader("src/res/shaders/UserInterface.shader");
 
-    // Setup Framebuffer
-    // Generate framebuffer
     GLCall(glGenFramebuffers(1, &framebuffer));
     GLCall(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer));
 
-    // Create a color attachment texture
     GLCall(glGenTextures(1, &textureColorBuffer));
     GLCall(glBindTexture(GL_TEXTURE_2D, textureColorBuffer));
     GLCall(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WindowDetails::WindowWidth, WindowDetails::WindowHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL));
@@ -88,25 +86,20 @@ bool VoxelEngine::initialize() {
     GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
     GLCall(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0));
 
-    // Create a renderbuffer object for depth and stencil attachment
     GLCall(glGenRenderbuffers(1, &rbo));
     GLCall(glBindRenderbuffer(GL_RENDERBUFFER, rbo));
     GLCall(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, WindowDetails::WindowWidth, WindowDetails::WindowHeight));
     GLCall(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo));
 
-    // Check if framebuffer is complete
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         std::cerr << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
         return false;
     }
-    GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0)); // Unbind framebuffer
+    GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 
-    // Load and compile the post-processing shader
     postProcessingShader = Shader("src/res/shaders/PostProcessingArtifact.shader");
 
-    // Setup full-screen quad
     float quadVertices[] = {
-        // positions   // texCoords
         -1.0f,  1.0f,  0.0f, 1.0f,
         -1.0f, -1.0f,  0.0f, 0.0f,
          1.0f, -1.0f,  1.0f, 0.0f,
@@ -134,19 +127,12 @@ bool VoxelEngine::initialize() {
     userInterfaceShader.use();
     userInterfaceShader.setUniform4fv("projection", projection);
 
-    camera = Camera(0.2); // 0.2 is our camera's sensitivity.
+    camera = Camera(0.2);
     swapRenderMethodCooldown = 0.0f;
-
-    worldManager.setCamAndShaderPointers(&blockShader, &camera);
+    worldManager.passObjectPointers(&blockShader, &camera);
 
     player.setCamera(&camera);
     player.setWorld(&worldManager);
-
-    if (!debugUI.initialize()) {
-        std::cout << "DebugUI failed initialization\n";
-    }
-
-    // Set up keyStates map for keeping track of if a button was pressed last frame or is currently released for toggle buttons
     
     keyStates[GLFW_KEY_F] = false; // Toggle polygon fill mode
     keyStates[GLFW_KEY_G] = false; // Toggle gravity
@@ -167,13 +153,12 @@ bool VoxelEngine::initialize() {
     playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] = false;
     playerKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = false;
 
+    debugUI.initialize();
     userInterface.initialize();
-
     player.initialize();
-
     proceduralGenerationGui.initialize(window, &proceduralGeneration);
 
-    worldManager.passWindowPointerToRenderer(window);
+    worldManager.setWindowPointer(window);
 
     return true;
 }
@@ -195,7 +180,6 @@ void VoxelEngine::run() {
             timeAtLastFPSCheck += fpsUpdateTime;
         }
 
-        
         processInput();
         update();
         render();
@@ -240,21 +224,16 @@ void VoxelEngine::processInput() {
     if (!imGuiCursor) {
         if (keyStates[GLFW_KEY_F] && !lastKeyStates[GLFW_KEY_F])                // F -> Toggle polygon line/fill
             worldManager.switchRenderMethod();
-
-        if (keyStates[GLFW_KEY_P] && !lastKeyStates[GLFW_KEY_P])                // F -> Toggle polygon line/fill
+		if (keyStates[GLFW_KEY_P] && !lastKeyStates[GLFW_KEY_P])                // P -> Toggle post-processing shader
             usePostProcessing = !usePostProcessing;
-
         if (keyStates[GLFW_KEY_G] && !lastKeyStates[GLFW_KEY_G])                // G -> Toggle gravity
             player.toggleGravity();
-
         if (keyStates[GLFW_KEY_I] && !lastKeyStates[GLFW_KEY_I])                // I -> Toggle debug text
             renderDebug = !renderDebug;
-
         if (keyStates[GLFW_KEY_UP] && !lastKeyStates[GLFW_KEY_UP]) {            // Up arrow -> Increase render radius by 1
             renderRadius += 1;
             worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
         }
-
         if (keyStates[GLFW_KEY_DOWN] && !lastKeyStates[GLFW_KEY_DOWN]) {        // Down arrow -> Decrease render radius by 1
             if (renderRadius > 1) {
                 renderRadius--;
@@ -270,21 +249,17 @@ void VoxelEngine::update() {
     if (worldManager.getReadyForPlayerUpdate())
         player.update(deltaTime);
 
-    int cameraPosX = floor(camera.getCameraPos().x);
-    int cameraPosZ = floor(camera.getCameraPos().z);
-    currChunkX = cameraPosX >= 0 ? cameraPosX / ChunkUtils::WIDTH : (cameraPosX - (ChunkUtils::WIDTH - 1)) / ChunkUtils::WIDTH;
-    currChunkZ = cameraPosZ >= 0 ? cameraPosZ / ChunkUtils::DEPTH : (cameraPosZ - (ChunkUtils::DEPTH - 1)) / ChunkUtils::DEPTH;
+    int cameraPosX = static_cast<int>(floor(camera.getCameraPos().x));
+    int cameraPosZ = static_cast<int>(floor(camera.getCameraPos().z));
+	currChunkX = ChunkUtils::worldToChunkCoord(cameraPosX);
+    currChunkZ = ChunkUtils::worldToChunkCoord(cameraPosZ);
     
     worldManager.update();
 
-    bool pggUpdateTerrain = proceduralGenerationGui.shouldUpdate();
-    bool crossedChunkBorder = currChunkX != lastChunkX || currChunkZ != lastChunkZ;
-    if (pggUpdateTerrain) {
+    if (proceduralGenerationGui.shouldUpdate())
         worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, true);
-    }
-    else if (crossedChunkBorder) {
+    if (currChunkX != lastChunkX || currChunkZ != lastChunkZ)
         worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
-    }
 
     lastChunkX = currChunkX;
     lastChunkZ = currChunkZ;
@@ -314,21 +289,19 @@ void VoxelEngine::render() {
 
     if (usePostProcessing) {
         GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-        GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));  // Clear the default framebuffer
+        GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
         postProcessingShader.use();
 
         GLCall(glActiveTexture(GL_TEXTURE0));
         GLCall(glBindTexture(GL_TEXTURE_2D, textureColorBuffer));
-        postProcessingShader.setUniform1i("screenTexture", 0);  // Set the texture unit to 0
+        postProcessingShader.setUniform1i("screenTexture", 0);
         GLCall(glBindVertexArray(quadVAO));
         GLCall(glDrawArrays(GL_TRIANGLES, 0, 6));
     }
 
-    // Disable depth testing before rendering the UI and debug text
     GLCall(glDisable(GL_DEPTH_TEST));
 
-    // Re-enable blending for rendering text (if post-processing disables it)
     GLCall(glEnable(GL_BLEND));
     GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
@@ -350,7 +323,6 @@ void VoxelEngine::render() {
     proceduralGenerationGui.endLoop();
 
     glfwSwapBuffers(window);
-
     glfwPollEvents();
 }
 

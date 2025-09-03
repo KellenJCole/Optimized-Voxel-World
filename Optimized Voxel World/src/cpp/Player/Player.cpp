@@ -102,12 +102,12 @@ void Player::update(float deltaTime) {
 	}
 }
 
-unsigned char Player::getBlockAt(int worldX, int worldY, int worldZ) {
+BlockID Player::getBlockAt(int worldX, int worldY, int worldZ) {
 	if (worldY > 255) {
-		return 0;
+		return BlockID::AIR;
 	}
-	int chunkX = ChunkUtils::convertWorldCoordToChunkCoord(worldX);
-	int chunkZ = ChunkUtils::convertWorldCoordToChunkCoord(worldZ);
+	int chunkX = ChunkUtils::worldToChunkCoord(worldX);
+	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
 	std::pair<int, int> key = { chunkX, chunkZ };
 
 	int accessX = -8008135, accessZ = -8008135;
@@ -123,14 +123,12 @@ unsigned char Player::getBlockAt(int worldX, int worldY, int worldZ) {
 	int localX = (((worldX % ChunkUtils::WIDTH) + ChunkUtils::WIDTH) % ChunkUtils::WIDTH);
 	int localZ = (((worldZ % ChunkUtils::DEPTH) + ChunkUtils::DEPTH) % ChunkUtils::DEPTH);
 
-	int flatIndex = convert3DCoordinatesToFlatIndex(localX, worldY, localZ);
+	int flatIndex = ChunkUtils::flattenChunkCoords(localX, worldY, localZ, 0);
 
 	return playerChunks[accessX][accessZ].second[flatIndex];
 }
 
 void Player::setPlayerChunks() {
-
-	double now = glfwGetTime();
 	glm::vec3 currPos = camera->getCameraPos();
 	float chunkXPrecise = currPos.x > 0 ? currPos.x / 64 : (currPos.x - 63) / 64;
 	float chunkZPrecise = currPos.z > 0 ? currPos.z / 64 : (currPos.z - 63) / 64;
@@ -155,10 +153,6 @@ void Player::setPlayerChunks() {
 			}
 		}
 	}
-	double end = glfwGetTime();
-	if (playerChunksReady)
-		std::cout << "Retrieved player chunks in " << (end - now) * 1000 << "ms\n";
-
 }
 
 bool Player::checkForGravitationalCollision() {
@@ -171,8 +165,8 @@ bool Player::checkForGravitationalCollision() {
 
 	for (int x = minCheckX; x <= maxCheckX; x++) {
 		for (int z = minCheckZ; z <= maxCheckZ; z++) {
-			unsigned char block = getBlockAt(x, cameraPos.y, z);
-			if (block != 0) {
+			BlockID block = getBlockAt(x, cameraPos.y, z);
+			if (block != BlockID::AIR) {
 				currentGravitationalCollision = true;
 				return true;
 			}
@@ -185,8 +179,8 @@ bool Player::checkForGravitationalCollision() {
 
 bool Player::checkHeadCollision() {
 	glm::vec3 cameraPos = camera->getCameraPos();
-	unsigned char block = getBlockAt(floor(cameraPos.x), floor(cameraPos.y + 0.1), floor(cameraPos.z));
-	if (block != 0) {
+	BlockID block = getBlockAt(floor(cameraPos.x), floor(cameraPos.y + 0.1), floor(cameraPos.z));
+	if (block != BlockID::AIR) {
 		return true;
 	}
 
@@ -207,7 +201,7 @@ bool Player::checkForHorizontalCollision() {
 
 	for (int x = xMin; x <= xMax; x++) {
 		for (int y = yMin; y <= yMax; y++) {
-			if (getBlockAt(x, y, std::floor(camPos.z)) != 0) {
+			if (getBlockAt(x, y, std::floor(camPos.z)) != BlockID::AIR) {
 				return true;
 			}
 		}
@@ -215,7 +209,7 @@ bool Player::checkForHorizontalCollision() {
 
 	for (int z = zMin; z <= zMax; z++) {
 		for (int y = yMin; y <= yMax; y++) {
-			if (getBlockAt(std::floor(camPos.x), y, z) != 0) {
+                if (getBlockAt(std::floor(camPos.x), y, z) != BlockID::AIR) {
 				return true;
 			}
 		}
@@ -224,7 +218,7 @@ bool Player::checkForHorizontalCollision() {
 	for (int x = xMin; x <= xMax; x++) {
 		for (int z = zMin; z <= zMax; z++) {
 			for (int y = yMin; y <= yMax; y++) {
-				if (getBlockAt(x, y, z) != 0) {
+				if (getBlockAt(x, y, z) != BlockID::AIR) {
 					return true;
 				}
 			}
@@ -269,7 +263,7 @@ void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float delta
 				if (returnVecs.first.x != NULL) {
 					glm::vec3 posToPlace = returnVecs.first + returnVecs.second;
 					if (!checkAnyPlayerCollision(posToPlace)) {
-						world->placeBlock(posToPlace.x, posToPlace.y, posToPlace.z, 1);
+						world->placeBlock(posToPlace.x, posToPlace.y, posToPlace.z, BlockID::DIRT);
 						playerChunksReady = false;
 						setPlayerChunks();
 					}
@@ -281,7 +275,7 @@ void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float delta
 			glm::vec3 posToPlace = returnVecs.first + returnVecs.second;
 			if (returnVecs.first.x != NULL) {
 				if (!checkAnyPlayerCollision(posToPlace)) {
-					world->placeBlock(posToPlace.x, posToPlace.y, posToPlace.z, 1);
+                    world->placeBlock(posToPlace.x, posToPlace.y, posToPlace.z, BlockID::DIRT);
 					playerChunksReady = false;
 					setPlayerChunks();
 				}
@@ -434,7 +428,7 @@ std::pair<glm::vec3, glm::vec3> Player::raycast(glm::vec3 origin, glm::vec3 dire
 
 	while (stepY > 0 ? y < 255 : y >= 0) {
 		if (y < 255 && y >= 0) {
-			if (world->getBlockAtGlobal(x, y, z, -1, -1) != 0) {
+			if (world->getBlockAtGlobal(x, y, z, -1, -1) != BlockID::AIR) {
 				if (y != 0) {
 					return { {x, y, z}, {face} };
 				}

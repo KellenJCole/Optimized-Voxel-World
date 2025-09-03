@@ -69,19 +69,19 @@
     <ClCompile Include="src\cpp\Rendering\Utility\GLErrorCatcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\Rendering\IndexBuffer.cpp">
+    <ClCompile Include="src\cpp\Rendering\Buffering\IndexBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\cpp\Rendering\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\Rendering\TextureArray.cpp">
+    <ClCompile Include="src\cpp\Rendering\Buffering\TextureArray.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\Rendering\VertexArray.cpp">
+    <ClCompile Include="src\cpp\Rendering\Buffering\VertexArray.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\cpp\Rendering\VertexBuffer.cpp">
+    <ClCompile Include="src\cpp\Rendering\Buffering\VertexBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\cpp\Terrain\Chunk.cpp">
@@ -99,7 +99,7 @@
     <ClCompile Include="src\cpp\VoxelEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\h\FastNoise-master\FastNoise.cpp">
+    <ClCompile Include="src\h\external\FastNoise-master\FastNoise.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\cpp\Terrain\GreedyAlgorithm.cpp">
@@ -120,25 +120,28 @@
     <ClCompile Include="src\cpp\Terrain\ProcGen\ProcGenGui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\h\Dear ImGui\imgui.cpp">
+    <ClCompile Include="src\h\external\Dear ImGui\imgui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\h\Dear ImGui\imgui_demo.cpp">
+    <ClCompile Include="src\h\external\Dear ImGui\imgui_demo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\h\Dear ImGui\imgui_draw.cpp">
+    <ClCompile Include="src\h\external\Dear ImGui\imgui_draw.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\h\Dear ImGui\imgui_impl_glfw.cpp">
+    <ClCompile Include="src\h\external\Dear ImGui\imgui_impl_glfw.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\h\Dear ImGui\imgui_impl_opengl3.cpp">
+    <ClCompile Include="src\h\external\Dear ImGui\imgui_impl_opengl3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\h\Dear ImGui\imgui_tables.cpp">
+    <ClCompile Include="src\h\external\Dear ImGui\imgui_tables.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\h\Dear ImGui\imgui_widgets.cpp">
+    <ClCompile Include="src\h\external\Dear ImGui\imgui_widgets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\VertexPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -152,7 +155,7 @@
     <ClInclude Include="src\h\Rendering\Utility\GLErrorCatcher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Rendering\IndexBuffer.h">
+    <ClInclude Include="src\h\Rendering\Buffering\IndexBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\h\Rendering\Renderer.h">
@@ -161,19 +164,16 @@
     <ClInclude Include="src\h\Rendering\Shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Rendering\TextureArray.h">
+    <ClInclude Include="src\h\Rendering\Buffering\TextureArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Rendering\VertexArray.h">
+    <ClInclude Include="src\h\Rendering\Buffering\VertexArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Rendering\VertexBuffer.h">
+    <ClInclude Include="src\h\Rendering\Buffering\VertexBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Rendering\VertexBufferLayout.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\h\stb_image\stb_image.h">
+    <ClInclude Include="src\h\external\stb_image\stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\h\Terrain\Chunk.h">
@@ -188,7 +188,7 @@
     <ClInclude Include="src\h\VoxelEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\FastNoise-master\FastNoise.h">
+    <ClInclude Include="src\h\external\FastNoise-master\FastNoise.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\h\Terrain\GreedyAlgorithm.h">
@@ -209,34 +209,61 @@
     <ClInclude Include="src\h\Terrain\ProcGen\ProcGenGui.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Dear ImGui\imconfig.h">
+    <ClInclude Include="src\h\external\Dear ImGui\imconfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Dear ImGui\imgui.h">
+    <ClInclude Include="src\h\external\Dear ImGui\imgui.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Dear ImGui\imgui_impl_glfw.h">
+    <ClInclude Include="src\h\external\Dear ImGui\imgui_impl_glfw.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Dear ImGui\imgui_impl_opengl3.h">
+    <ClInclude Include="src\h\external\Dear ImGui\imgui_impl_opengl3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Dear ImGui\imgui_impl_opengl3_loader.h">
+    <ClInclude Include="src\h\external\Dear ImGui\imgui_impl_opengl3_loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Dear ImGui\imgui_internal.h">
+    <ClInclude Include="src\h\external\Dear ImGui\imgui_internal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Dear ImGui\imstb_rectpack.h">
+    <ClInclude Include="src\h\external\Dear ImGui\imstb_rectpack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Dear ImGui\imstb_textedit.h">
+    <ClInclude Include="src\h\external\Dear ImGui\imstb_textedit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Dear ImGui\imstb_truetype.h">
+    <ClInclude Include="src\h\external\Dear ImGui\imstb_truetype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\h\Constants.h">
+    <ClInclude Include="src\h\Rendering\VertexPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Buffering\VertexBufferLayout.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Utility\WindowConfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Terrain\Utility\ChunkUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Terrain\Utility\BlockID.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Utility\BlockTextureID.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Utility\BlockTextureLUT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Utility\BlockFace.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Utility\BlockFaceBitmask.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\h\Rendering\Utility\MeshUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -244,9 +271,10 @@
     <None Include="src\res\shaders\Block.shader" />
     <None Include="src\res\shaders\Debug.shader" />
     <None Include="src\res\shaders\UserInterface.shader" />
-    <None Include="src\h\Dear ImGui\imgui.natstepfilter" />
+    <None Include="src\h\external\Dear ImGui\imgui.natstepfilter" />
     <None Include="src\res\shaders\Transparent.shader" />
     <None Include="src\res\shaders\PostProcessingArtifact.shader" />
+    <None Include=".clang-format" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="src\res\textures\User Interface\crosshair.png">
@@ -254,6 +282,6 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="src\h\Dear ImGui\imgui.natvis" />
+    <Natvis Include="src\h\external\Dear ImGui\imgui.natvis" />
   </ItemGroup>
 </Project>

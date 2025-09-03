@@ -1,10 +1,10 @@
 #pragma once
 #include <vector>
-#include "Utility/GLErrorCatcher.h"
+#include "h/Rendering/Utility/GLErrorCatcher.h"
 #include <iostream>
 
 struct VertexBufferElement {
-	unsigned int type; 
+	unsigned int type;
 	unsigned int count; // How many types in a single element, position might have 3 (x, y, z) for example
 	char normalized; // Should the data be normalized?
 

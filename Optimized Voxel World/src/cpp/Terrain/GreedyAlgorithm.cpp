@@ -2,170 +2,165 @@
 #include <algorithm>
 #include <iostream>
 
-enum BlockFace {
-	NEG_X = 1 << 0, // 0b000001
-	POS_X = 1 << 1, // 0b000010
-	NEG_Y = 1 << 2, // 0b000100
-	POS_Y = 1 << 3, // 0b001000
-	NEG_Z = 1 << 4, // 0b010000
-	POS_Z = 1 << 5  // 0b100000
-};
-
 GreedyAlgorithm::GreedyAlgorithm() {
 
 }
 
-void GreedyAlgorithm::firstPassOn(BlockFace f) {
-	int greedyGraphIndex;
+void GreedyAlgorithm::populatePlanes(
+	std::map<BlockFace, std::vector<unsigned int>>& visibleBlockIndexes, 
+	std::vector<BlockID>& chunkData, 
+	int levelOfDetail
+) {
 
-	switch (f) {
-	case NEG_X: greedyGraphIndex = 0; break;
-	case POS_X: greedyGraphIndex = 1; break;
-	case NEG_Y: greedyGraphIndex = 2; break;
-	case POS_Y: greedyGraphIndex = 3; break;
-	case NEG_Z: greedyGraphIndex = 4; break;
-	case POS_Z: greedyGraphIndex = 5; break;
-	}
-
-	for (auto& p : planes[f]) {
-		std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>> meshesForThisFace;
-		auto& plane = p.second;
-		std::vector<std::vector<bool>> processed(plane.size(), std::vector<bool>(plane[0].size(), false));
-
-		for (int firstAxis = 0; firstAxis < plane.size(); ++firstAxis) {
-			for (int secondAxis = 0; secondAxis < plane[firstAxis].size(); ++secondAxis) {
-				if (plane[firstAxis][secondAxis] == 0 || processed[firstAxis][secondAxis]) continue;
-
-				unsigned char blockType = plane[firstAxis][secondAxis];
-				int startFirst = firstAxis, endFirst = firstAxis, startSecond = secondAxis, endSecond = secondAxis;
-
-				// Correctly increment endSecond in the loop
-				while (endSecond + 1 < plane[firstAxis].size() && plane[firstAxis][endSecond + 1] == blockType && !processed[firstAxis][endSecond + 1]) {
-					processed[firstAxis][++endSecond] = true;
-				}
-
-				// Expand vertically across columns
-				bool canExpand = true;
-				while (canExpand && endFirst + 1 < plane.size()) {
-					for (int checkSecond = startSecond; checkSecond <= endSecond; ++checkSecond) {
-						if (plane[endFirst + 1][checkSecond] != blockType || processed[endFirst + 1][checkSecond]) {
-							canExpand = false;
-							break;
-						}
-					}
-					if (canExpand) {
-						++endFirst;
-						for (int markSecond = startSecond; markSecond <= endSecond; ++markSecond) {
-							processed[endFirst][markSecond] = true;
-						}
-					}
-				}
-
-				// Correct the mesh addition with the right variable names
-				unsigned char grassAssignChar;
-				if (blockType == 2) {
-					switch (f) {
-					case NEG_X: 
-					case POS_X: grassAssignChar = 3; break;
-					case NEG_Y: grassAssignChar = 1; break;
-					case POS_Y: grassAssignChar = 2; break;
-					case NEG_Z: 
-					case POS_Z: grassAssignChar = 3; break;
-					}
-
-					meshesForThisFace.push_back({ grassAssignChar, {{startSecond, endSecond}, {startFirst, endFirst}} });
-				}
-				else {
-					blockType = blockType > 2 ? blockType + 1 : blockType;
-					meshesForThisFace.push_back({ blockType, {{startSecond , endSecond}, {startFirst, endFirst}} });
-				}
-			}
-		}
-
-		Greedy_Graphs[greedyGraphIndex].push_back({ meshesForThisFace, p.first });
-	}
-
-	planes[f].clear();
-}
-
-#include <iostream>
-
-void GreedyAlgorithm::assignCoordinates(BlockFace face, int unknownCoord1, int unknownCoord2, int unknownCoord3, int& x, int& y, int& z) {
-	switch (face) {
-	case NEG_X:
-	case POS_X:
-		x = unknownCoord3;
-		y = unknownCoord2;
-		z = unknownCoord1;
-		break;
-	case NEG_Y:
-	case POS_Y:
-		x = unknownCoord1;
-		y = unknownCoord3;
-		z = unknownCoord2;
-		break;
-	case NEG_Z:
-	case POS_Z:
-		x = unknownCoord2;
-		y = unknownCoord3;
-		z = unknownCoord1;
-		break;
-	}
-}
-
-void GreedyAlgorithm::populatePlanes(std::map<BlockFace, std::vector<unsigned int>>& vb, std::vector<unsigned char>& c, int levelOfDetail) {
 	int blockResolution = 1 << levelOfDetail;
-
 	int width = ChunkUtils::WIDTH / blockResolution;
 	int depth = ChunkUtils::DEPTH / blockResolution;
 	int height = ChunkUtils::HEIGHT / blockResolution;
 
-	for (const auto& blockLocation : vb) {
-		BlockFace face = blockLocation.first;
+	for (auto const& kv : visibleBlockIndexes) {
+		BlockFace face = kv.first;
+        const std::vector<unsigned int>& indices = kv.second;
+        auto& facePlanes = _planes[static_cast<size_t>(face)];
 
-		for (auto location : blockLocation.second) {
+		for (std::vector<unsigned int>::const_iterator itIdx = indices.begin(); itIdx != indices.end(); ++itIdx) {
+            unsigned int location = *itIdx;
 
-			int unknownCoord1 = location / (width * depth); // y
 			int remainder = location % (width * depth);
-			int unknownCoord2 = remainder / width; // z
-			int unknownCoord3 = remainder % width; // x
+            int localX = remainder % width;
+			int localY = location / (width * depth);
+			int localZ = remainder / width;
 
-			int x, y, z;
-			assignCoordinates(face, unknownCoord1, unknownCoord2, unknownCoord3, x, y, z);
+			int u, v, sliceIndex;
+			assignCoordinates(face, localX, localY, localZ, u, v, sliceIndex);
 
-			unsigned char blockType = c[location];
-			if (blockType != 0) { // If not an air block
-				// Check if the plane has a vector here
-			auto& planeVec = planes[face];
-			auto it = std::find_if(planeVec.begin(), planeVec.end(),
-					[x](const std::pair<int, std::vector<std::vector<unsigned char>>>& elem) { return elem.first == x; });
+			BlockID type = chunkData[location];
+			if (type == BlockID::AIR) continue;
 
-				if (it == planeVec.end()) {
-					std::vector<std::vector<unsigned char>> newPlane;
-					switch (face) {
-					case NEG_X:
-					case POS_X:
-					case NEG_Z:
-					case POS_Z: newPlane.resize(width, std::vector<unsigned char>(height, 0)); break;
-					case NEG_Y:
-					case POS_Y: newPlane.resize(width, std::vector<unsigned char>(depth, 0)); break;
-					}
-					planeVec.push_back({ x, newPlane });
-					it = std::prev(planeVec.end()); // Set iterator to newly added plane
+			BlockTextureID tex = textureForFace(type, face);
+
+			// Check if the plane has a vector here
+            std::vector<MeshUtils::Plane>::iterator itPlane = std::find_if(
+				facePlanes.begin(), facePlanes.end(),
+				[sliceIndex](const MeshUtils::Plane& p) { return p.sliceIndex == sliceIndex; });
+
+			if (itPlane == facePlanes.end()) {
+                MeshUtils::Plane newPlane;
+                newPlane.sliceIndex = sliceIndex;
+                int rows, cols;
+				switch (face) {
+					case BlockFace::NEG_X:
+                    case BlockFace::POS_X:
+                    case BlockFace::NEG_Z:
+                    case BlockFace::POS_Z:
+                        rows = width;
+                        cols = height;
+                        break;
+                    case BlockFace::NEG_Y:
+                    case BlockFace::POS_Y:
+                        rows = width;
+                        cols = depth;
+                        break;
 				}
-
-				it->second[y][z] = blockType;
+				newPlane.grid.assign(rows, std::vector<BlockTextureID>(cols, BlockTextureID::AIR));
+				facePlanes.push_back(newPlane);
+				itPlane = std::prev(facePlanes.end()); // Set iterator to newly added plane
 			}
+
+			itPlane->grid[u][v] = tex;
 		}
 	}
 }
 
-std::vector<std::pair<std::vector<std::pair<unsigned char, std::pair<std::pair<int, int>, std::pair<int, int>>>>, int>> GreedyAlgorithm::getAllGreedyGraphs(int faceType) {
-	return Greedy_Graphs[faceType];
+void GreedyAlgorithm::firstPassOn(BlockFace f) {
+    std::vector<MeshUtils::Plane>& facePlanes = _planes[static_cast<size_t>(f)];
+    MeshUtils::MeshGraph& graph = _greedyGraphs[static_cast<size_t>(f)];
+    graph.clear();
+
+    for (std::vector<MeshUtils::Plane>::const_iterator pit = facePlanes.begin(); pit != facePlanes.end(); ++pit) {
+        const MeshUtils::Plane& plane = *pit;
+        int rows = static_cast<int>(plane.grid.size());
+        int cols = rows > 0 ? static_cast<int>(plane.grid[0].size()) : 0;
+        std::vector<std::vector<bool>> processed(rows, std::vector<bool>(cols, false));
+
+        std::vector<MeshUtils::Quad> quads;
+        for (int r = 0; r < rows; ++r) {
+            for (int c = 0; c < cols; ++c) {
+                if (plane.grid[r][c] == BlockTextureID::AIR || processed[r][c]) continue;
+
+                BlockTextureID tex = plane.grid[r][c];
+                int startR = r, endR = r;
+                int startC = c, endC = c;
+
+                while (endC + 1 < cols && plane.grid[r][endC + 1] == tex && !processed[r][endC + 1]) {
+                    ++endC;
+                    processed[r][endC] = true;
+                }
+
+                bool canExpand = true;
+                while (canExpand && endR + 1 < rows) {
+                    for (int cc = startC; cc <= endC; ++cc) {
+                        if (plane.grid[endR + 1][cc] != tex || processed[endR + 1][cc]) {
+                            canExpand = false;
+                            break;
+                        }
+                    }
+                    if (canExpand) {
+                        ++endR;
+                        for (int cc = startC; cc <= endC; ++cc) {
+                            processed[endR][cc] = true;
+                        }
+                    }
+                }
+
+                MeshUtils::Quad quad;
+                quad.tex = tex;
+                quad.bounds.u0 = startC;
+                quad.bounds.v0 = startR;
+                quad.bounds.u1 = endC;
+                quad.bounds.v1 = endR;
+                quads.push_back(quad);
+            }
+        }
+
+        MeshUtils::MeshSlice slice;
+        slice.sliceIndex = plane.sliceIndex;
+        slice.quads = quads;
+        graph.push_back(slice);
+    }
+
+    facePlanes.clear();
+}
+
+void GreedyAlgorithm::assignCoordinates(BlockFace face, int localX, int localY, int localZ, int& u, int& v, int& sliceIndex) {
+	switch (face) {
+        case BlockFace::NEG_X:
+        case BlockFace::POS_X:
+            u = localZ;
+            v = localY;
+            sliceIndex = localX;
+			break;
+        case BlockFace::NEG_Y:
+        case BlockFace::POS_Y:
+            u = localX;
+            v = localZ;
+            sliceIndex = localY;
+			break;
+        case BlockFace::NEG_Z:
+        case BlockFace::POS_Z:
+            u = localX;
+            v = localY;
+            sliceIndex = localZ;
+			break;
+	}
+}
+
+const MeshUtils::MeshGraph& GreedyAlgorithm::getMeshGraph(BlockFace f) const {
+    return _greedyGraphs[static_cast<size_t>(f)];
 }
 
 void GreedyAlgorithm::unload() {
-	for (int i = 0; i < 6; i++) {
-		Greedy_Graphs[i].clear();
-	}
+    for (size_t face = 0; face < MeshUtils::FACE_COUNT; ++face) {
+        _planes[face].clear();
+        _greedyGraphs[face].clear();
+    }
 }
