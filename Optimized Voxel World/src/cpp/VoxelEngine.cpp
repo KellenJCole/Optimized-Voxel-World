@@ -51,14 +51,15 @@ bool VoxelEngine::initialize() {
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glfwWindowHint(GLFW_SAMPLES, 4);
 
-    if (glewInit() != GLEW_OK) {
-        std::cout << "glewInit() != GLEW_OK\n";
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cout << "Failed to initiailize GLAD\n";
         return false;
     }
+
+    GLCall(glEnable(GL_BLEND));
+    GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
     std::cout << glGetString(GL_VERSION) << "\n";
 

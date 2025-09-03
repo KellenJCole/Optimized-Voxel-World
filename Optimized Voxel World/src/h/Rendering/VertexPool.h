@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <vector>
 #include <cstddef>
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <mutex>
 #include "h/Rendering/Utility/GLErrorCatcher.h"
 #include "h/Rendering/Utility/BlockGeometry.h"
