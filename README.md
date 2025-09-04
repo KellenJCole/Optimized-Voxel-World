@@ -34,6 +34,20 @@ https://www.youtube.com/watch?v=wc1ZzzBtpKw
 ## Goal    
 Focus is on optimizing memory usage and speed of generating, meshing, and rendering chunks before moving on to real gameplay elements.  
 Once I feel performance is efficient enough, and bug-free, I will move on to interesting procedural generation.  
+
+## Controls  
+- WASD: move around
+- F: toggle polygon fill mode
+- G: toggle gravity
+- I: toggle FPS/coordinates display
+- Up Arrow: increase render distance
+- Down Arrow: decrease render distance
+- Escape: unlock cursor
+- P: Toggle post-processing shader (hides T-junction errors)
+- Space: Jump or move up (if gravity is disabled)
+- Left Shift: Move down (if gravity is disabled)
+- Left click: Place block
+- Right click: Break block  
   
 ## Credits  
 Textures used are obtained from Faithful: https://faithfulpack.net  
