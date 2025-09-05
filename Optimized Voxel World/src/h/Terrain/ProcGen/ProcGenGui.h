@@ -1,4 +1,5 @@
 #pragma once
+
 #include <GLFW/glfw3.h>
 #include "h/Terrain/ProcGen/ProcGen.h"
 #include "h/external/Dear ImGui/imgui.h"

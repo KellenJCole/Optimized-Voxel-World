@@ -1,7 +1,9 @@
 #pragma once
+
 #include "h/Terrain/WorldManager.h"
 #include "h/Rendering/Camera.h"
 #include "h/Terrain/Utility/ChunkUtils.h"
+
 #include <map>
 #include <mutex>
 

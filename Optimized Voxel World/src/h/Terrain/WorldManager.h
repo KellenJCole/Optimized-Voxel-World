@@ -27,7 +27,8 @@ public:
 
     void updateRenderChunks(int originX, int originZ, int renderRadius, bool unloadAll);
 
-    BlockID getBlockAtGlobal(int worldX, int worldY, int worldZ, int prevLod, int face);
+    BlockID getBlockAtGlobal(int worldX, int worldY, int worldZ);
+    BlockID getBlockAtGlobal(int worldX, int worldY, int worldZ, BlockFace face, int sourceLod);
     void breakBlock(int worldX, int worldY, int worldZ);
     void placeBlock(int worldX, int worldY, int worldZ, BlockID blockToPlace);
     std::vector<BlockID> getChunkVector(ChunkCoordPair key);
@@ -41,9 +42,8 @@ public:
 
 private:
     void addVerticesForQuad(std::vector<Vertex>& verts, std::vector<unsigned int>& inds, MeshUtils::Quad quad, ChunkCoordPair chunkCoords,
-        size_t faceType, int sliceIndex, int levelOfDetail, unsigned int baseIndex);
-    glm::vec3 calculatePosition(MeshUtils::Quad& quad, int corner, size_t faceType, ChunkCoordPair cxcz, int sliceIndex,
-                             int levelOfDetail);
+        int faceType, int sliceIndex, int levelOfDetail, unsigned int baseIndex);
+    glm::vec3 calculatePosition(MeshUtils::Quad& quad, int corner, size_t faceType, ChunkCoordPair cxcz, int sliceIndex, int levelOfDetail);
     glm::vec2 calculateTexCoords(MeshUtils::Quad& quad, int corner);
 
     void genChunkMesh(ChunkCoordPair key);

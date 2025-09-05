@@ -1,9 +1,10 @@
 #pragma once
-#include <array>
 
 #include "h/Rendering/Utility/BlockTextureID.h"
 #include "h/Rendering/Utility/BlockFace.h"
 #include "h/Terrain/Utility/BlockID.h"
+
+#include <array>
 
 struct BlockTexturesPerFace {
     BlockTextureID negX, posX, negY, posY, negZ, posZ;

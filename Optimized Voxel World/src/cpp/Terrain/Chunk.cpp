@@ -56,50 +56,72 @@ void Chunk::startMeshing() {
 }
 
 BlockFaceBitmask Chunk::cullFaces(int blockIndex, std::vector<uint16_t>& neighborCache) {
-    BlockFaceBitmask mask = BlockFaceBitmask::NONE;
+   BlockFaceBitmask mask = BlockFaceBitmask::NONE;
 
     glm::ivec3 coords = expandChunkCoords(blockIndex);
-    int localX = coords.x;
-    int localY = coords.y;
-    int localZ = coords.z;
+    int localX = coords.x, localY = coords.y, localZ = coords.z;
 
-    bool isBorderXNeg = (localX == 0);
-    bool isBorderXPos = (localX == resolutionXZ - 1);
-    bool isBorderZNeg = (localZ == 0);
-    bool isBorderZPos = (localZ == resolutionXZ - 1);
+    for (int f = 0; f < toInt(BlockFace::Count); ++f) {
+        BlockFace face = static_cast<BlockFace>(f);
 
-    glm::ivec3 worldCoords = {localX + chunkX * ChunkUtils::WIDTH, localY, localZ + chunkZ * ChunkUtils::DEPTH};
-
-    for (int i = 0; i < 6; ++i) {
-        if (hasNeighborCheckBeenPerformed(blockIndex, i, neighborCache)) {
-            if (neighborCache[blockIndex] & CHECK_RESULT_MASK(i)) {
-                mask |= static_cast<BlockFaceBitmask>(1u << i);
+        if (hasNeighborCheckBeenPerformed(blockIndex, face, neighborCache)) { // neighbor is cached
+            if (neighborCache[blockIndex] & CHECK_RESULT_MASK(toInt(face))) {
+                mask |= static_cast<BlockFaceBitmask>(1u << toInt(face));
             }
-        } else {
+        } 
+        else {
             bool neighborIsAir = false;
-            bool borderCheck = false;
 
-            int neighborIndex = blockIndex + neighborOffsets[i];
+            bool isBorderXNeg = (localX == 0)                   && (face == BlockFace::NEG_X);
+            bool isBorderXPos = (localX == resolutionXZ - 1)    && (face == BlockFace::POS_X);
+            bool isBorderZNeg = (localZ == 0)                   && (face == BlockFace::NEG_Z);
+            bool isBorderZPos = (localZ == resolutionXZ - 1)    && (face == BlockFace::POS_Z);
 
-            if ((i == 0 && isBorderXNeg) || (i == 1 && isBorderXPos) || (i == 4 && isBorderZNeg) ||
-                (i == 5 && isBorderZPos)) {
-                int neighborX = worldCoords.x + (i == 1) - (i == 0);
-                int neighborY = worldCoords.y + (i == 3) - (i == 2);
-                if (neighborY < 0 || neighborY >= resolutionY) {
-                    continue;
+            bool borderCheck = isBorderXNeg || isBorderXPos || isBorderZNeg || isBorderZPos;
+
+            if (!borderCheck) { // Neighbor is within local chunk
+                if (localY == 0 && face == BlockFace::NEG_Y) {
+                    neighborIsAir = false;
                 }
-                int neighborZ = worldCoords.z + (i == 5) - (i == 4);
-                neighborIsAir = (world->getBlockAtGlobal(neighborX, neighborY, neighborZ, detailLevel, i) == BlockID::AIR);
-                borderCheck = true;
-            } else if (neighborIndex >= 0 && neighborIndex < chunkLodMap[detailLevel].size()) {
-                neighborIsAir = (chunkLodMap[detailLevel][neighborIndex] == BlockID::AIR);
+                else if (localY == (resolutionY - 1) && face == BlockFace::POS_Y) {
+                    neighborIsAir = true;
+                }
+                else {
+                    int neighborIndex = blockIndex + neighborOffsets[toInt(face)];
+                    neighborIsAir = (chunkLodMap[detailLevel][neighborIndex] == BlockID::AIR);
+                    markNeighborsCheck(neighborIndex, face, neighborCache);
+                }
+            }
+            else {
+                int scale = 1 << detailLevel;
+                int baseX = chunkX * ChunkUtils::WIDTH;
+                int baseZ = chunkZ * ChunkUtils::DEPTH;
+
+                int neighborX, neighborY, neighborZ;
+                neighborY = localY * scale;
+
+                if (isBorderXNeg) {
+                    neighborX = baseX - 1;
+                    neighborZ = baseZ + (localZ * scale);
+                }
+                else if (isBorderZNeg) {
+                    neighborX = baseX + (localX * scale);
+                    neighborZ = baseZ - 1;
+                }
+                else if (isBorderXPos) {
+                    neighborX = baseX + ChunkUtils::WIDTH;
+                    neighborZ = baseZ + (localZ * scale);
+                }
+                else if (isBorderZPos) {
+                    neighborX = baseX + (localX * scale);
+                    neighborZ = baseZ + ((localZ + 1) * scale);
+                }
+
+                neighborIsAir = (world->getBlockAtGlobal(neighborX, neighborY, neighborZ, face, detailLevel) == BlockID::AIR);
             }
 
             if (neighborIsAir) {
-                mask |= static_cast<BlockFaceBitmask>(1u << i);
-            }
-            if (!borderCheck) {
-                markNeighborsCheck(neighborIndex, i, neighborCache);
+                mask |= static_cast<BlockFaceBitmask>(1u << toInt(face));
             }
         }
     }
@@ -107,56 +129,62 @@ BlockFaceBitmask Chunk::cullFaces(int blockIndex, std::vector<uint16_t>& neighbo
     return mask;
 }
 
-void Chunk::markNeighborsCheck(int neighborIndex, int face, std::vector<uint16_t>& neighborCache) {
-    int oppositeFace = (face % 2 == 0) ? face + 1 : face - 1;
+void Chunk::markNeighborsCheck(int neighborIndex, BlockFace face, std::vector<uint16_t>& neighborCache) {
+    BlockFace oppositeFace = opposite(face);
 
     if (neighborIndex >= 0 && neighborIndex < resolutionXZ * resolutionXZ * resolutionY) {
-        neighborCache[neighborIndex] |= CHECK_PERFORMED_MASK(oppositeFace);
-        neighborCache[neighborIndex] &= ~CHECK_RESULT_MASK(oppositeFace);
+        neighborCache[neighborIndex] |= CHECK_PERFORMED_MASK(toInt(oppositeFace));
+        neighborCache[neighborIndex] &= ~CHECK_RESULT_MASK(toInt(oppositeFace));
     }
 }
 
-bool Chunk::hasNeighborCheckBeenPerformed(int blockIndex, int face, std::vector<uint16_t>& neighborCache) {
-    return neighborCache[blockIndex] & CHECK_PERFORMED_MASK(face);
+bool Chunk::hasNeighborCheckBeenPerformed(int blockIndex, BlockFace face, std::vector<uint16_t>& neighborCache) {
+    return neighborCache[blockIndex] & CHECK_PERFORMED_MASK(toInt(face));
 }
 
-BlockID Chunk::getBlockAt(int worldX, int worldY, int worldZ, int face, int prevLod) {
-    if (worldY >= resolutionY) {
-        return BlockID::AIR;
-    } else if (worldY < 0) {
-        return BlockID::BEDROCK;
-    }
+BlockID Chunk::getBlockAt(int worldX, int worldY, int worldZ) {
 
     int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
+    int localY = worldY;
     int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
 
-    int flatIndex = ChunkUtils::flattenChunkCoords(localX, worldY, localZ, detailLevel);
+    int flatIndex = ChunkUtils::flattenChunkCoords(localX, localY, localZ, detailLevel);
+    return chunkLodMap[detailLevel][flatIndex];
+}
 
-    if (prevLod > detailLevel && face != -1) {
+BlockID Chunk::getBlockAt(int worldX, int worldY, int worldZ, BlockFace face, int sourceLod) {
+    int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
+    int localY = worldY;
+    int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
+    
+    int scale = 1 << detailLevel;
+
+    localX /= scale;
+    localY /= scale;
+    localZ /= scale;
+
+    int flatIndex = ChunkUtils::flattenChunkCoords(localX, localY, localZ, detailLevel);
+    if (sourceLod > detailLevel) { // Meshing - a block of low detail is looking at a block of higher detail (smaller)
         BlockID blocks[4];
         blocks[0] = chunkLodMap[detailLevel][flatIndex];
-        if (face == 0 || face == 1) {  // X
-            blocks[1] =
-                chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX + 1, worldY, localZ, detailLevel)];
-            blocks[2] =
-                chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX, worldY + 1, localZ, detailLevel)];
-            blocks[3] =
-                chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX + 1, worldY + 1, localZ, detailLevel)];
+        if (face == BlockFace::NEG_X || face == BlockFace::POS_X) {
+            blocks[1] = chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX,         localY,         localZ + 1,     detailLevel)];
+            blocks[2] = chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX,         localY + 1,     localZ,         detailLevel)];
+            blocks[3] = chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX,         localY + 1,     localZ + 1,     detailLevel)];
 
-        } else if (face == 4 || face == 5) {  // Z
-            blocks[1] =
-                chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX, worldY + 1, localZ, detailLevel)];
-            blocks[2] =
-                chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX, worldY, localZ + 1, detailLevel)];
-            blocks[3] =
-                chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX, worldY + 1, localZ + 1, detailLevel)];
         }
+        else if (face == BlockFace::NEG_Z || face == BlockFace::POS_Z) {
+            blocks[1] = chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX,         localY + 1,     localZ,         detailLevel)];
+            blocks[2] = chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX + 1,     localY,         localZ,         detailLevel)];
+            blocks[3] = chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX + 1,     localY + 1,     localZ,         detailLevel)];
+        }
+
         for (int i = 0; i < 4; i++) {
             if (blocks[i] == BlockID::AIR) {
                 return BlockID::AIR;
             }
         }
-        return BlockID::BEDROCK;
+        return BlockID::BEDROCK;  // arbitrary - solid
     }
 
     return chunkLodMap[detailLevel][flatIndex];
@@ -199,18 +227,24 @@ void Chunk::greedyMesh() {
     greedyAlgorithm.firstPassOn(BlockFace::POS_Z);
 }
 
-void Chunk::breakBlock(int localX, int localY, int localZ) {
+bool Chunk::breakBlock(int localX, int localY, int localZ) {
     int flatIndex = ChunkUtils::flattenChunkCoords(localX, localY, localZ, detailLevel);
 
-    chunkLodMap[detailLevel][flatIndex] = BlockID::AIR;
+    if (chunkLodMap[detailLevel][flatIndex] != BlockID::BEDROCK) {
+        chunkLodMap[detailLevel][flatIndex] = BlockID::AIR;
+        return true;
+    }
+    return false;
 }
 
-void Chunk::placeBlock(int localX, int localY, int localZ, BlockID blockToPlace) {
+bool Chunk::placeBlock(int localX, int localY, int localZ, BlockID blockToPlace) {
     int flatIndex = ChunkUtils::flattenChunkCoords(localX, localY, localZ, detailLevel);
     if (flatIndex > highestOccupiedIndex) {
         highestOccupiedIndex = flatIndex;
     }
     chunkLodMap[detailLevel][flatIndex] = blockToPlace;
+
+    return true;
 }
 
 glm::ivec3 Chunk::expandChunkCoords(int flatIndex) {

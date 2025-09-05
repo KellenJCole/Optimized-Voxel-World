@@ -1,7 +1,8 @@
 #include "h/VoxelEngine.h"
-#include <iostream>
 #include "h/Rendering/Shader.h"
 #include "h/Rendering/Utility/GLErrorCatcher.h"
+
+#include <iostream>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -14,7 +15,7 @@ VoxelEngine::VoxelEngine()
     , imGuiCursor(false)
     , usePostProcessing(true)
     , renderRadius(64)
-    , vertexPool(4ULL * 1024 * 1024 * 1024) 
+    , vertexPool(1ULL * 1024 * 1024 * 1024) 
 {
 
 	currChunkX = ChunkUtils::worldToChunkCoord(static_cast<int>(floor(camera.getCameraPos().x)));
@@ -312,9 +313,9 @@ void VoxelEngine::render() {
         std::ostringstream stream;
         stream << std::fixed << std::setprecision(2);
         stream << fps * (1.f / fpsUpdateTime) << "\n";
-        stream << cameraPos.x << " " << cameraPos.y << " " << cameraPos.z << "\n";
+        stream << cameraPos.x << " " << (cameraPos.y - 1.8) << " " << cameraPos.z << "\n";
 
-        debugUI.renderText(debugShader, stream.str(), 10.0f, 1020.0f, 0.8f, glm::vec3(0.0f, 0.5f, 0.5f));
+        debugUI.renderText(debugShader, stream.str(), 10.0f, 1020.0f, 0.8f, glm::vec3(0.f, 0.f, 0.f));
     }
 
     userInterface.render(userInterfaceShader);

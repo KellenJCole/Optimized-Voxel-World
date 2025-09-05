@@ -106,11 +106,15 @@ BlockID Player::getBlockAt(int worldX, int worldY, int worldZ) {
 	if (worldY > 255) {
 		return BlockID::AIR;
 	}
+	if (worldY == 0) {
+		return BlockID::BEDROCK;
+	}
+
 	int chunkX = ChunkUtils::worldToChunkCoord(worldX);
 	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
 	std::pair<int, int> key = { chunkX, chunkZ };
 
-	int accessX = -8008135, accessZ = -8008135;
+	int accessX = -8008135, accessZ = -8008135; // uhh these are clearly placeholders but i need to change this
 	for (int x = 0; x < 2; x++) {
 		for (int z = 0; z < 2; z++) {
 			if (playerChunks[x][z].first == key) {
@@ -374,7 +378,7 @@ float intbound(float s, float ds) {
 
 void Player::setCamera(Camera* c) {
 	camera = c;
-	camera->setMode(false);
+	camera->toggleFlying(false);
 }
 
 void Player::setWorld(WorldManager* w) {
@@ -383,7 +387,7 @@ void Player::setWorld(WorldManager* w) {
 
 void Player::toggleGravity() {
 	gravityOn = !gravityOn;
-	camera->setMode(!gravityOn);
+	camera->toggleFlying(!gravityOn);
 }
 
 /*
@@ -428,7 +432,7 @@ std::pair<glm::vec3, glm::vec3> Player::raycast(glm::vec3 origin, glm::vec3 dire
 
 	while (stepY > 0 ? y < 255 : y >= 0) {
 		if (y < 255 && y >= 0) {
-			if (world->getBlockAtGlobal(x, y, z, -1, -1) != BlockID::AIR) {
+			if (world->getBlockAtGlobal(x, y, z) != BlockID::AIR) {
 				if (y != 0) {
 					return { {x, y, z}, {face} };
 				}

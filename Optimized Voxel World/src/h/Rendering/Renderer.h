@@ -1,13 +1,15 @@
 #pragma once
+
 #include "h/Rendering/Buffering/VertexArray.h"
 #include "h/Rendering/Buffering/VertexBuffer.h"
 #include "h/Rendering/Buffering/IndexBuffer.h"
 #include "h/Rendering/Shader.h"
 #include "h/Rendering/Utility/BlockGeometry.h"
 #include "h/Rendering/VertexPool.h"
+#include <h/external/glm/glm.hpp>
+
 #include <vector>
 #include <map>
-#include <h/external/glm/glm.hpp>
 #include <mutex>
 
 class Renderer {

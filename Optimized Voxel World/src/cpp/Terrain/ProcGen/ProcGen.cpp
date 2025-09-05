@@ -50,13 +50,13 @@ int ProcGen::generateChunk(std::vector<BlockID>& chunkVec, std::pair<int, int> c
 				int worldY = y * blockResolution;
 
 				if (worldY <= convertHeight) {
-					if (y <= convertHeight && normalizedHeight < 0.2f) {
+					if (worldY == 0) {
 						chunkVec[index] = BlockID::BEDROCK;
 					}
-					else if (y <= convertHeight && normalizedHeight < 0.4f) {
+					if (worldY > 0) {
 						chunkVec[index] = BlockID::STONE;
 					}
-					else if (y <= convertHeight) {
+					if (worldY >= convertHeight - 7) {
 						chunkVec[index] = BlockID::DIRT;
 					}
 					highestIndex = index;

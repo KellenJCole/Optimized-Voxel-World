@@ -266,6 +266,9 @@
     <ClInclude Include="src\h\Rendering\Utility\MeshUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TODO.md">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\res\shaders\Block.shader" />
@@ -274,7 +277,6 @@
     <None Include="src\h\external\Dear ImGui\imgui.natstepfilter" />
     <None Include="src\res\shaders\Transparent.shader" />
     <None Include="src\res\shaders\PostProcessingArtifact.shader" />
-    <None Include=".clang-format" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="src\res\textures\User Interface\crosshair.png">

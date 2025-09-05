@@ -4,7 +4,7 @@
 
 WorldManager::WorldManager() :
 	lightPos(0.0f, 2000.f, 0.0f),
-	lightColor(0.9f, 0.8f, 0.7f),
+	lightColor(0.9f, 1.f, 0.7f),
 	updatedRenderChunks(false),
 	readyForPlayerUpdate(false)
 {
@@ -85,20 +85,27 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 		}
 	}
 
+	std::unordered_set<ChunkCoordPair, PairHash> needsMeshing;
 	for (const auto& key : loadChunks) {
 		if (stopAsync.load()) {
 			break;
 		}
 
-		int lod = calculateLevelOfDetail(key);
 		if (worldKeysSet.find(key) != worldKeysSet.end()) {
 			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 			if (worldMap[key]->meshDirty || !worldMap[key]->meshExists) {
-				if (worldMap[key]->getCurrentLod() != lod)
-					worldMap[key]->convertLOD(lod);
-				genChunkMesh(key);
+				needsMeshing.insert(key);
+			}
+			int lod = calculateLevelOfDetail(key);
+			if (worldMap[key]->getCurrentLod() != lod) {
+				worldMap[key]->convertLOD(lod);
+				needsMeshing.insert(key);
 			}
 		}
+	}
+
+	for (const auto& key : needsMeshing) {
+		genChunkMesh(key);
 	}
 }
 
@@ -115,19 +122,19 @@ int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
 	if (distance <= 10) {
 		return 0;
 	}
-	else if (distance <= 20) {
+	else if (distance <= 25) {
 		return 1;
 	}
-	else if (distance <= 35) {
+	else if (distance <= 50) {
 		return 2;
 	}
-	else if (distance <= 60) {
+	else if (distance <= 70) {
 		return 3;
 	}
-	else if (distance <= 80) {
+	else if (distance <= 100) {
 		return 4;
 	}
-	else if (distance <= 100) {
+	else if (distance <= 512) {
 		return 5;
 	}
 	else {
@@ -171,45 +178,28 @@ void WorldManager::unloadChunks(const std::vector<std::pair<int, int>>& loadChun
 	}
 }
 
-BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, int prevLod, int face) {
+BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ) {
 	int chunkX = ChunkUtils::worldToChunkCoord(worldX);
 	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
-	std::pair<int, int> key = { chunkX, chunkZ };
+	std::pair<int, int> chunkKey = { chunkX, chunkZ };
 
-	if (worldKeysSet.find(key) != worldKeysSet.end()) {
-		int currentLod;
-		{
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-			currentLod = worldMap[key]->getCurrentLod();
-		}
-		if (prevLod != -1 && currentLod != prevLod) {
-			int lodDifference = 1 << abs(prevLod - currentLod);
+	if (worldKeysSet.find(chunkKey) != worldKeysSet.end()) {
 
-			// Wrap world coordinates to local chunk coordinates and apply the chunk position
-			int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
-			int localY = worldY;
-			int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
+		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+		return worldMap[chunkKey]->getBlockAt(worldX, worldY, worldZ);
+	}
+	else {
+		return BlockID::NONE;
+	}
+}
 
-			// If currentLod is higher (e.g., LOD 0), scale the coordinates up (multiply)
-			if (currentLod < prevLod) {
-				worldX = (chunkX * ChunkUtils::WIDTH) + (localX * lodDifference);
-				worldY *= lodDifference;
-				worldZ = (chunkZ * ChunkUtils::DEPTH) + (localZ * lodDifference);
-			}
-			// If currentLod is lower (e.g., LOD 1), scale the coordinates down (divide)
-			else if (currentLod > prevLod) {
-				worldX = (chunkX * ChunkUtils::WIDTH) + (localX / lodDifference);
-				worldY /= lodDifference;
-				worldZ = (chunkZ * ChunkUtils::DEPTH) + (localZ / lodDifference);
-			}
+BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, BlockFace face, int sourceLod) {
+	int chunkX = ChunkUtils::worldToChunkCoord(worldX);
+	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
+	std::pair<int, int> chunkKey = { chunkX, chunkZ };
 
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-			return worldMap[key]->getBlockAt(worldX, worldY, worldZ, face, prevLod);
-		}
-		else {
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-			return worldMap[key]->getBlockAt(worldX, worldY, worldZ, face, prevLod);
-		}
+	if (worldKeysSet.find(chunkKey) != worldKeysSet.end()) {
+		return worldMap[chunkKey]->getBlockAt(worldX, worldY, worldZ, face, sourceLod);
 	}
 	else {
 		return BlockID::NONE;
@@ -226,35 +216,40 @@ void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
 			int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
 			int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
 
+			bool success;
 			{
 				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-				worldMap[key]->breakBlock(localX, worldY, localZ);
-				worldMap[key]->meshDirty = true;
+				success = worldMap[key]->breakBlock(localX, worldY, localZ);
+				if (success) {
+					worldMap[key]->meshDirty = true;
+				}
 			}
 
-			genChunkMesh(key);
+			if (success) {
+				genChunkMesh(key);
 
-			// Update neighboring chunks if necessary
-			if (localX == 0) {
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-				worldMap[{ key.first - 1, key.second }]->meshDirty = true;
-				genChunkMesh({ key.first - 1, key.second });
-			}
-			else if (localX == ChunkUtils::WIDTH - 1) {
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-				worldMap[{ key.first + 1, key.second }]->meshDirty = true;
-				genChunkMesh({ key.first + 1, key.second });
-			}
+				// Update neighboring chunks if necessary
+				if (localX == 0) {
+					std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+					worldMap[{ key.first - 1, key.second }]->meshDirty = true;
+					genChunkMesh({ key.first - 1, key.second });
+				}
+				else if (localX == ChunkUtils::WIDTH - 1) {
+					std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+					worldMap[{ key.first + 1, key.second }]->meshDirty = true;
+					genChunkMesh({ key.first + 1, key.second });
+				}
 
-			if (localZ == 0) {
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-				worldMap[{ key.first, key.second - 1}]->meshDirty = true;
-				genChunkMesh({ key.first, key.second - 1 });
-			}
-			else if (localZ == ChunkUtils::DEPTH - 1) {
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-				worldMap[{ key.first, key.second + 1 }]->meshDirty = true;
-				genChunkMesh({ key.first, key.second + 1 });
+				if (localZ == 0) {
+					std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+					worldMap[{ key.first, key.second - 1}]->meshDirty = true;
+					genChunkMesh({ key.first, key.second - 1 });
+				}
+				else if (localZ == ChunkUtils::DEPTH - 1) {
+					std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+					worldMap[{ key.first, key.second + 1 }]->meshDirty = true;
+					genChunkMesh({ key.first, key.second + 1 });
+				}
 			}
 		}
 	}
@@ -331,7 +326,7 @@ void WorldManager::genChunkMesh(ChunkCoordPair key) {
 	{
 		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 		
-		for (size_t f = 0; f < MeshUtils::FACE_COUNT; ++f) {
+		for (int f = 0; f < toInt(BlockFace::Count); ++f) {
 			greedyMeshes[f] = worldMap[key]->getMeshGraph(static_cast<BlockFace>(f));
         }
 	}
@@ -340,15 +335,15 @@ void WorldManager::genChunkMesh(ChunkCoordPair key) {
 	std::vector<unsigned int> inds;
 	unsigned int baseIndex = 0;
 
-	for (size_t face = 0; face < MeshUtils::FACE_COUNT; face++) {
-		for (const auto& slice : greedyMeshes[face]) {
+	for (int f = 0; f < toInt(BlockFace::Count); ++f) {
+		for (const auto& slice : greedyMeshes[f]) {
             int sliceIdx = slice.sliceIndex;
 			for (const auto& quad : slice.quads) {
 				addVerticesForQuad(
 					verts, inds, 
 					quad, 
 					key, 
-					face, 
+					f, 
 					sliceIdx, 
 					lod, 
 					baseIndex
@@ -369,7 +364,7 @@ void WorldManager::genChunkMesh(ChunkCoordPair key) {
 }
 
 void WorldManager::addVerticesForQuad(std::vector<Vertex>& verts, std::vector<unsigned int>& inds, MeshUtils::Quad quad, ChunkCoordPair chunkCoords,
-        size_t faceType, int sliceIndex, int levelOfDetail, unsigned int baseIndex) {
+        int faceType, int sliceIndex, int levelOfDetail, unsigned int baseIndex) {
 	// Calculate positions for each corner of the quad
 	glm::vec3 bl = calculatePosition(quad, 0, faceType, chunkCoords, sliceIndex, levelOfDetail);
     glm::vec3 br = calculatePosition(quad, 1, faceType, chunkCoords, sliceIndex, levelOfDetail);
@@ -383,7 +378,7 @@ void WorldManager::addVerticesForQuad(std::vector<Vertex>& verts, std::vector<un
 	glm::vec2 texTR = calculateTexCoords(quad, 3);
 
 	// Define normal based on face type
-	int normal = static_cast<int>(faceType);
+	int normal = faceType;
 	BlockTextureID tex = quad.tex;
 
 	// Add vertices for the quad

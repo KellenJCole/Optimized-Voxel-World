@@ -2,9 +2,10 @@
 #ifndef SHADER_H
 #define SHADER_H
 
-#include <string>
 #include <h/external/glm/glm.hpp> 
 #include <h/external/glm/gtc/type_ptr.hpp> 
+
+#include <string>
 
 class Shader {
 public:
