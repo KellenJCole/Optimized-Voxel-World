@@ -20,6 +20,10 @@ https://www.youtube.com/watch?v=wc1ZzzBtpKw
 - Build -> Build Solution
 ### 4) Run  
 
+## Note  
+As of now, the application runs in *windowed 1920x1080*. It cannot be resized without odd behavior. *Yet.*  
+I develop on a 1440p monitor. Making the resolution adjustable is on the very long todo list.  
+  
 ## Features:  
 -Procedural generation  
 -Player collisions and physics  
