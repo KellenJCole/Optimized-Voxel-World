@@ -1,10 +1,12 @@
 #pragma once
-#include <vector>
-#include <string>
+
 #include "h/Terrain/Utility/ChunkUtils.h"
 #include "h/Terrain/Utility/BlockID.h"
 #include "h/external/FastNoise-master/FastNoise.h"
 #include "h/external/glm/glm.hpp"
+
+#include <vector>
+#include <string>
 #include <set>
 #include <map>
 #include <mutex>

@@ -21,22 +21,22 @@ void main()
     TexCoord = aTexCoord;
     FragPos = translatedPosition;
 
-    if (aNormal % 16 == 1) {
+    if (aNormal % 16 == 0) {
         Normal = vec3(-(aNormal % 16), 0, 0);
     }
-    else if (aNormal % 16 == 2) {
+    else if (aNormal % 16 == 1) {
         Normal = vec3(aNormal % 16, 0, 0);
     }
-    else if (aNormal % 16 == 3) {
+    else if (aNormal % 16 == 2) {
         Normal = vec3(0, -(aNormal >> 1), 0);
     }
-    else if (aNormal % 16 == 4) {
+    else if (aNormal % 16 == 3) {
         Normal = vec3(0, aNormal >> 1, 0);
     }
-    else if (aNormal % 16 == 5) {
+    else if (aNormal % 16 == 4) {
         Normal = vec3(0, 0, -1);
     }
-    else if (aNormal % 16 == 6) {
+    else if (aNormal % 16 == 5) {
         Normal = vec3(0, 0, 1);
     }
 

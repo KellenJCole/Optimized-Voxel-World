@@ -1,9 +1,11 @@
 #pragma once
+
 #include "h/external/glm/glm.hpp"
 #include "h/external/glm/gtc/matrix_access.hpp"
 #include "h/external/glm/gtc/matrix_transform.hpp"
 #include "h/Rendering/Utility/WindowConfig.h"
 #include "h/Terrain/Utility/ChunkUtils.h"
+
 #include <array>
 #include <vector>
 #include <map>
@@ -22,7 +24,7 @@ public:
 
 	void setCameraPos(glm::vec3 pos);
 
-	inline void setMode(bool fly) { mode = fly; }
+	inline void toggleFlying(bool fly) { flying = fly; }
 
 	// Getters for camera properties
 	glm::vec3 getCameraPos() const { return cameraPos; }
@@ -49,7 +51,7 @@ private:
 	float pitch;
 	float lastX, lastY;
 	bool firstMouse;
-	bool mode;
+	bool flying;
 
 	// Internal helper function
 	void updateCameraVectors();

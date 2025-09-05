@@ -1,7 +1,9 @@
 #pragma once
-#include <vector>
+
 #include "h/Rendering/Utility/GLErrorCatcher.h"
+
 #include <iostream>
+#include <vector>
 
 struct VertexBufferElement {
 	unsigned int type;

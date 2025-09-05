@@ -15,7 +15,7 @@ Camera::Camera(float inputSensitivity)
 	projection = glm::perspective(glm::radians((float)WindowDetails::FOV), (float)WindowDetails::WindowWidth / (float)WindowDetails::WindowHeight, 0.1f, 20000.0f);
 	view = glm::mat4(1.0f);
 	updateCameraVectors(); 
-	mode = false; // gravity on 
+	flying = false; // gravity on 
 
 }
 
@@ -27,8 +27,8 @@ void Camera::update()
 void Camera::processKeyboardInput(std::map<unsigned int, bool> keyStates, float deltaTime)
 {
 	float camSpeed;
-	if (mode) {
-		camSpeed = 300.f * deltaTime;
+	if (flying) {
+		camSpeed = 50.f * deltaTime;
 		glm::vec3 moveDir;
 		float originalY = cameraPos.y;
 

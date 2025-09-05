@@ -1,8 +1,10 @@
 #pragma once
+
 #include <ft2build.h>
 #include "h/external/glm/vec2.hpp"
 #include "h/external/glm/common.hpp"
 #include "h/external/glm/gtc/matrix_transform.hpp"
+
 #include <iostream>
 #include <map>
 #include FT_FREETYPE_H

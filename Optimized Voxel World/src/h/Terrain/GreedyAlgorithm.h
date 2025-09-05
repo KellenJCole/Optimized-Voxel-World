@@ -1,7 +1,9 @@
 #pragma once
+
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+
 #include "h/Terrain/Utility/ChunkUtils.h"
 #include "h/Terrain/Utility/BlockID.h"
 #include "h/Rendering/Utility/MeshUtils.h"

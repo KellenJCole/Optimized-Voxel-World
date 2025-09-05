@@ -90,9 +90,9 @@
     <ClInclude Include="src\h\Terrain\Utility\ChunkUtils.h" />
     <ClInclude Include="src\h\Terrain\WorldManager.h" />
     <ClInclude Include="src\h\VoxelEngine.h" />
+    <ClInclude Include="TODO.md" />
   </ItemGroup>
   <ItemGroup>
-    <None Include=".clang-format" />
     <None Include="src\h\external\Dear ImGui\imgui.natstepfilter" />
     <None Include="src\res\shaders\Block.shader" />
     <None Include="src\res\shaders\Debug.shader" />

@@ -1,12 +1,13 @@
 #pragma once
 
+#include "h/Rendering/Utility/GLErrorCatcher.h"
+#include "h/Rendering/Utility/BlockGeometry.h"
+#include <glad/glad.h>
+
 #include <unordered_map>
 #include <vector>
 #include <cstddef>
-#include <glad/glad.h>
 #include <mutex>
-#include "h/Rendering/Utility/GLErrorCatcher.h"
-#include "h/Rendering/Utility/BlockGeometry.h"
 
 using ChunkCoordPair = std::pair<int, int>;
 

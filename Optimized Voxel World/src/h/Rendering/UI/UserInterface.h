@@ -1,4 +1,5 @@
 #pragma once
+
 #include "h/Rendering/Buffering/TextureArray.h"
 
 class Shader;

@@ -1,8 +1,10 @@
 #pragma once
+
 #include <vector>
 #include <map>
 #include <set>
 #include <shared_mutex>
+
 #include "h/Rendering/Utility/BlockFaceBitmask.h"
 #include <h/Terrain/GreedyAlgorithm.h>
 #include <h/external/glm/glm.hpp>
@@ -27,21 +29,24 @@ public:
 	inline int getChunkX() const { return chunkX; }
 	inline int getChunkZ() const { return chunkZ; }
 	inline int getCurrentLod() const { return detailLevel; }
-	BlockID getBlockAt(int worldX, int worldY, int worldZ, int face, int prevLod);
+	BlockID getBlockAt(int worldX, int worldY, int worldZ);
+	BlockID getBlockAt(int worldX, int worldY, int worldZ, BlockFace face, int sourceLod);
 	std::vector<BlockID> getCurrChunkVec();
+
 	// Procedurally generate chunk and form meshes
 	void generateChunk();
 	void startMeshing();
 	BlockFaceBitmask cullFaces(int blockIndex, std::vector<uint16_t>& neighborCache);
-	void markNeighborsCheck(int neighborIndex, int face, std::vector<uint16_t>& neighborCache);
-	bool hasNeighborCheckBeenPerformed(int blockIndex, int face, std::vector<uint16_t>& neighborCache);
+	void markNeighborsCheck(int neighborIndex, BlockFace face, std::vector<uint16_t>& neighborCache);
+	bool hasNeighborCheckBeenPerformed(int blockIndex, BlockFace face, std::vector<uint16_t>& neighborCache);
 	void greedyMesh();
 	std::map<BlockFace, std::vector<unsigned int>>* getVisByFaceType() { return &visByFaceType; }
-	// Chunk modification
-	void breakBlock(int localX, int localY, int localZ);
-	void placeBlock(int localX, int localY, int localZ, BlockID blockToPlace);
 
-	// Switch LOD
+	// Chunk modification
+	bool breakBlock(int localX, int localY, int localZ);
+	bool placeBlock(int localX, int localY, int localZ, BlockID blockToPlace);
+
+	// Change LOD
 	void convertLOD(int newLod);
 
 	// Clear VisByFaceType (might need to do other things, this should be thought about harder)
@@ -62,13 +67,13 @@ private:
 
 	ProcGen* proceduralAlgorithm;
 	GreedyAlgorithm greedyAlgorithm;
-	std::map<int, std::vector<BlockID>> chunkLodMap; // delete this upon unload
+	std::map<int, std::vector<BlockID>> chunkLodMap;
 	std::map<BlockFace, std::vector<unsigned int>> visByFaceType;
 	WorldManager* world;
 
 	bool hasBeenGenerated[7];
 
 	// Basic variables related to level of detail
-	int blockResolution; // 1 >> detailLevel
+	int blockResolution;
 	int chunkX, chunkZ;
 };
