@@ -1,30 +1,21 @@
 #include "h/Player/Player.h"
 
 Player::Player() :
+	camera(nullptr),
+	world(nullptr),
 	gravitationalAcceleration(70),
-	verticalVelocity(0),
-	xVelocity(0),
-	zVelocity(0),
+	jumpAcceleration(-15),
 	horizontalAcceleration(5.f),
-	gravityOn(true),
+	xVelocity(0),
+	yVelocity(0),
+	zVelocity(0),
 	currentGravitationalCollision(false),
 	isJumping(false),
-	jumpAcceleration(-15),
-	breakBlockDelay(0),
-	playerChunksReady(false)
+	playerChunksReady(false),
+	gravityOn(true),
+	blockUpdateDelay(0.143) // 7 block updates per second allowed
 {
-	srand((unsigned int)time(NULL));
-	lastChunkFractional = { {-8008135, false},  {-8008135, false}};
-}
-
-void Player::initialize() {
-	prevKeyStates[GLFW_KEY_W] = false;
-	prevKeyStates[GLFW_KEY_A] = false;
-	prevKeyStates[GLFW_KEY_S] = false;
-	prevKeyStates[GLFW_KEY_D] = false;
-	prevKeyStates[GLFW_KEY_SPACE] = false;
-	prevKeyStates[GLFW_MOUSE_BUTTON_LEFT] = false;
-	prevKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = false;
+	lastChunkFractional = { {std::numeric_limits<int>::min(), false},  {std::numeric_limits<int>::min(), false}};
 }
 
 void Player::update(float deltaTime) {
@@ -40,9 +31,8 @@ void Player::update(float deltaTime) {
 	bool chunkZFractionalBool = chunkZFractional > 0 ? (chunkZFractional > 0.5 ? true : false) : (abs(chunkZFractional) > 0.5 ? false : true);
 
 	double now = glfwGetTime();
-	if (!playerChunksReady) {
-		setPlayerChunks();
-	}
+	if (!playerChunksReady) setPlayerChunks();
+
 	if (gravityOn) {
 		bool differentChunkEntered = (chunkXInt != lastChunkFractional.first.first || chunkXFractionalBool != lastChunkFractional.first.second || chunkZInt != lastChunkFractional.second.first || chunkZFractionalBool != lastChunkFractional.second.second);
 		if (differentChunkEntered || !playerChunksReady) {
@@ -55,11 +45,11 @@ void Player::update(float deltaTime) {
 			glm::vec3 origPos = currPos;
 
 			// First move vertically
-			currPos.y -= verticalVelocity * deltaTime;
-			verticalVelocity += gravitationalAcceleration * deltaTime;
+			currPos.y -= yVelocity * deltaTime;
+			yVelocity += gravitationalAcceleration * deltaTime;
 
 			if (isJumping) {
-				verticalVelocity -= jumpAcceleration * deltaTime;
+				yVelocity -= jumpAcceleration * deltaTime;
 			}
 
 			camera->setCameraPos(currPos);
@@ -67,12 +57,11 @@ void Player::update(float deltaTime) {
 			bool horizontal = checkForHorizontalCollision();
 			bool gravitational = checkForGravitationalCollision();
 			bool head = checkHeadCollision();
-			if (horizontal) {
-				camera->setCameraPos(origPos);
-			}
+
+			if (horizontal) camera->setCameraPos(origPos);
 			if (gravitational || head) {
 				camera->setCameraPos(origPos);
-				verticalVelocity = 0;
+				yVelocity = 0;
 				isJumping = false;
 			}
 
@@ -103,18 +92,14 @@ void Player::update(float deltaTime) {
 }
 
 BlockID Player::getBlockAt(int worldX, int worldY, int worldZ) {
-	if (worldY > 255) {
-		return BlockID::AIR;
-	}
-	if (worldY == 0) {
-		return BlockID::BEDROCK;
-	}
+	if (worldY > 255) return BlockID::AIR;
+	if (worldY == 0) return BlockID::BEDROCK;
 
 	int chunkX = ChunkUtils::worldToChunkCoord(worldX);
 	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
 	std::pair<int, int> key = { chunkX, chunkZ };
 
-	int accessX = -8008135, accessZ = -8008135; // uhh these are clearly placeholders but i need to change this
+	int accessX = std::numeric_limits<int>::min(), accessZ = std::numeric_limits<int>::min();
 	for (int x = 0; x < 2; x++) {
 		for (int z = 0; z < 2; z++) {
 			if (playerChunks[x][z].first == key) {
@@ -124,8 +109,8 @@ BlockID Player::getBlockAt(int worldX, int worldY, int worldZ) {
 		}
 	}
 	
-	int localX = (((worldX % ChunkUtils::WIDTH) + ChunkUtils::WIDTH) % ChunkUtils::WIDTH);
-	int localZ = (((worldZ % ChunkUtils::DEPTH) + ChunkUtils::DEPTH) % ChunkUtils::DEPTH);
+	int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
+	int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
 
 	int flatIndex = ChunkUtils::flattenChunkCoords(localX, worldY, localZ, 0);
 
@@ -184,10 +169,8 @@ bool Player::checkForGravitationalCollision() {
 bool Player::checkHeadCollision() {
 	glm::vec3 cameraPos = camera->getCameraPos();
 	BlockID block = getBlockAt(floor(cameraPos.x), floor(cameraPos.y + 0.1), floor(cameraPos.z));
-	if (block != BlockID::AIR) {
-		return true;
-	}
 
+	if (block != BlockID::AIR) return true;
 	return false;
 }
 
@@ -205,26 +188,20 @@ bool Player::checkForHorizontalCollision() {
 
 	for (int x = xMin; x <= xMax; x++) {
 		for (int y = yMin; y <= yMax; y++) {
-			if (getBlockAt(x, y, std::floor(camPos.z)) != BlockID::AIR) {
-				return true;
-			}
+			if (getBlockAt(x, y, std::floor(camPos.z)) != BlockID::AIR) return true;
 		}
 	}
 
 	for (int z = zMin; z <= zMax; z++) {
 		for (int y = yMin; y <= yMax; y++) {
-                if (getBlockAt(std::floor(camPos.x), y, z) != BlockID::AIR) {
-				return true;
-			}
+			if (getBlockAt(std::floor(camPos.x), y, z) != BlockID::AIR) return true;
 		}
 	}
 
 	for (int x = xMin; x <= xMax; x++) {
 		for (int z = zMin; z <= zMax; z++) {
 			for (int y = yMin; y <= yMax; y++) {
-				if (getBlockAt(x, y, z) != BlockID::AIR) {
-					return true;
-				}
+				if (getBlockAt(x, y, z) != BlockID::AIR) return true;
 			}
 		}
 	}
@@ -232,68 +209,37 @@ bool Player::checkForHorizontalCollision() {
 	return false;
 }
 
-int signum(float x) {
-	return x > 0 ? 1 : x < 0 ? -1 : 0;
-}
-
-void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float deltaTime) {
+void Player::processKeyboardInput(std::map<GLuint, bool> keyStates, float deltaTime) {
 	double now = glfwGetTime();
 	if (playerChunksReady) {
-		if (keyStates[GLFW_MOUSE_BUTTON_LEFT] && prevKeyStates[GLFW_MOUSE_BUTTON_LEFT]) { // Break block
-			if (now - breakBlockDelay > 0.143) {
-				breakBlockDelay = now;
-				auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
-				if (returnVecs.first.x != std::numeric_limits<int>::min()) {
-					world->breakBlock(returnVecs.first.x, returnVecs.first.y, returnVecs.first.z);
+		if (keyStates[GLFW_MOUSE_BUTTON_LEFT]) { // Break block
+			if (now - blockUpdateDelay > 0.143) {
+				blockUpdateDelay = now;
+				glm::vec3 result = raycast(camera->getCameraPos(), camera->getCameraFront(), 5, CastType::Break);
+				if (result.x != std::numeric_limits<float>::min()) {
+					world->breakBlock(result.x, result.y, result.z);
 					playerChunksReady = false;
 					setPlayerChunks();
 				}
 			}
 		}
-		else if (keyStates[GLFW_MOUSE_BUTTON_LEFT] && !prevKeyStates[GLFW_MOUSE_BUTTON_LEFT]) {
-			breakBlockDelay = now;
-			auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
-			if (returnVecs.first.x != std::numeric_limits<int>::min()) {
-				world->breakBlock(returnVecs.first.x, returnVecs.first.y, returnVecs.first.z);
-				playerChunksReady = false;
-				setPlayerChunks();
-			}
-
-		}
-		if (keyStates[GLFW_MOUSE_BUTTON_RIGHT] && prevKeyStates[GLFW_MOUSE_BUTTON_RIGHT]) { // Place block
-			if (now - breakBlockDelay > 0.143) {
-				breakBlockDelay = now;
-				auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
-				if (returnVecs.first.x != std::numeric_limits<int>::min()) {
-					glm::vec3 posToPlace = returnVecs.first + returnVecs.second;
-					if (!checkAnyPlayerCollision(posToPlace)) {
-						world->placeBlock(posToPlace.x, posToPlace.y, posToPlace.z, BlockID::DIRT);
+		if (keyStates[GLFW_MOUSE_BUTTON_RIGHT]) { // Place block
+			if (now - blockUpdateDelay > 0.143) {
+				blockUpdateDelay = now;
+				glm::vec3 result = raycast(camera->getCameraPos(), camera->getCameraFront(), 5, CastType::Place);
+				if (result.x != std::numeric_limits<float>::min()) {
+					if (!checkAnyPlayerCollision(result)) {
+						world->placeBlock(result.x, result.y, result.z, BlockID::DIRT);
 						playerChunksReady = false;
 						setPlayerChunks();
 					}
 				}
 			}
 		}
-		else if (keyStates[GLFW_MOUSE_BUTTON_RIGHT] && !prevKeyStates[GLFW_MOUSE_BUTTON_RIGHT]) {
-			auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
-			glm::vec3 posToPlace = returnVecs.first + returnVecs.second;
-			if (returnVecs.first.x != std::numeric_limits<int>::min()) {
-				if (!checkAnyPlayerCollision(posToPlace)) {
-                    world->placeBlock(posToPlace.x, posToPlace.y, posToPlace.z, BlockID::DIRT);
-					playerChunksReady = false;
-					setPlayerChunks();
-				}
-
-			}
-			breakBlockDelay = now;
-		}
 	}
 
 	if (gravityOn) {
-		if (keyStates[GLFW_KEY_SPACE]) {
-			if (!isJumping)
-				jump();
-		}
+		if (keyStates[GLFW_KEY_SPACE] && !isJumping) jump();
 
 		glm::vec3 moveDir(0.0f);
 		glm::vec3 forwardDir = glm::normalize(glm::vec3(camera->getCameraFront().x, 0.0, camera->getCameraFront().z));
@@ -324,16 +270,13 @@ void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float delta
 		xVelocity = currentVelocity.x;
 		zVelocity = currentVelocity.y;
 	}
-	else if (!gravityOn) {
-		camera->processKeyboardInput(keyStates, deltaTime);
-	}
 
-	prevKeyStates = keyStates;
+	else if (!gravityOn) camera->processKeyboardInput(keyStates, deltaTime);
 }
 
 void Player::jump() {
 	if (currentGravitationalCollision) {
-		verticalVelocity = jumpAcceleration;
+		yVelocity = jumpAcceleration;
 		isJumping = true;
 	}
 }
@@ -354,9 +297,7 @@ bool Player::checkAnyPlayerCollision(glm::vec3 blockPos) {
 	for (int x = xMin; x <= xMax; x++) {
 		for (int y = yMin; y <= yMax; y++) {
 			for (int z = zMin; z <= zMax; z++) {
-				if (glm::vec3(x, y, z ) == blockPos) {
-					return true;
-				}
+				if (glm::vec3(x, y, z ) == blockPos) return true;
 			}
 		}
 	}
@@ -364,25 +305,13 @@ bool Player::checkAnyPlayerCollision(glm::vec3 blockPos) {
 	return false;
 }
 
-int mod(int value, int modulus) { // Fixes negative modulus issue
-	return (value % modulus + modulus) % modulus;
-}
-
 /*
 intbound() from Will, https://gamedev.stackexchange.com/users/4129/will, works well with negative coordinates
 */
 
-float intbound(float s, float ds) {
-	return (ds > 0 ? ceil(s) - s : s - floor(s)) / abs(ds);
-}
-
 void Player::setCamera(Camera* c) {
 	camera = c;
 	camera->toggleFlying(false);
-}
-
-void Player::setWorld(WorldManager* w) {
-	world = w;
 }
 
 void Player::toggleGravity() {
@@ -396,8 +325,16 @@ void Player::toggleGravity() {
 	Algorithm designed by John Amanatides and Andrew Woo of University of Toronto
 	"A Fast Voxel Traversal Algorithm for Ray Tracing" - http://www.cse.yorku.ca/~amana/research/grid.pdf accessed March 2nd, 2024
 */
+constexpr int signum(float x) {
+	return x > 0 ? 1 : x < 0 ? -1 : 0;
+}
+float intbound(float s, float ds) {
+	return (ds > 0 ? ceil(s) - s : s - floor(s)) / abs(ds);
+}
 
-std::pair<glm::vec3, glm::vec3> Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius) {
+glm::vec3 Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius, CastType mode) {
+	glm::vec3 noHit = { std::numeric_limits<float>::min(), std::numeric_limits<float>::min(), std::numeric_limits<float>::min() };
+
 	// Cube containing origin point.
 	int x = std::floor(origin.x);
 	int y = std::floor(origin.y);
@@ -425,7 +362,7 @@ std::pair<glm::vec3, glm::vec3> Player::raycast(glm::vec3 origin, glm::vec3 dire
 	glm::vec3 face;
 
 	if (dx == 0 && dy == 0 && dz == 0) {
-		return { {std::numeric_limits<int>::min(), std::numeric_limits<int>::min(), std::numeric_limits<int>::min()}, {std::numeric_limits<int>::min(), std::numeric_limits<int>::min(), std::numeric_limits<int>::min()} };
+		return noHit;
 	}
 
 	radius /= sqrt(dx * dx + dy * dy + dz * dz);
@@ -434,7 +371,8 @@ std::pair<glm::vec3, glm::vec3> Player::raycast(glm::vec3 origin, glm::vec3 dire
 		if (y < 255 && y >= 0) {
 			if (world->getBlockAtGlobal(x, y, z) != BlockID::AIR) {
 				if (y != 0) {
-					return { {x, y, z}, {face} };
+					if (mode == CastType::Break) return { x, y, z };
+					return {x + face[0], y + face[1], z + face[2]};
 				}
 				break;
 			}
@@ -481,5 +419,5 @@ std::pair<glm::vec3, glm::vec3> Player::raycast(glm::vec3 origin, glm::vec3 dire
 			}
 		}
 	}
-	return { {std::numeric_limits<int>::min(), std::numeric_limits<int>::min(), std::numeric_limits<int>::min()}, {std::numeric_limits<int>::min(), std::numeric_limits<int>::min(), std::numeric_limits<int>::min()}};
+	return noHit;
 }

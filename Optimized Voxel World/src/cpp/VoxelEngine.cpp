@@ -157,7 +157,6 @@ bool VoxelEngine::initialize() {
 
     debugUI.initialize();
     userInterface.initialize();
-    player.initialize();
     proceduralGenerationGui.initialize(window, &proceduralGenerator);
 
     worldManager.setWindowPointer(window);

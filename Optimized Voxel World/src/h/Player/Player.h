@@ -7,41 +7,51 @@
 #include <map>
 #include <mutex>
 
+
+enum class CastType { Break, Place }; // for raycasting
 class Player {
 public:
 	Player();
-	void initialize();
 	void setCamera(Camera* c);
-	void setWorld(WorldManager* w);
+	void setWorld(WorldManager* w) { world = w; }
 	void toggleGravity();
 	void update(float deltaTime);
 	void processKeyboardInput(std::map<GLuint, bool> keyStates, float deltaTime);
 private:
-	std::pair<glm::vec3, glm::vec3> raycast(glm::vec3 origin, glm::vec3 direction, float radius); // Returns in the first pair slot the block coordinates, in the second, the face info
 	void jump();
 	bool checkForGravitationalCollision();
 	bool checkForHorizontalCollision();
 	bool checkHeadCollision();
 	bool checkAnyPlayerCollision(glm::vec3 blockPos);
+	void setPlayerChunks();
 	BlockID getBlockAt(int worldX, int worldY, int worldZ);
 
-	void setPlayerChunks();
+	glm::vec3 raycast(glm::vec3 origin, glm::vec3 direction, float radius, CastType mode); // Returns in the first pair slot the block coordinates, in the second, the face info
 
-	std::map<GLuint, bool> prevKeyStates;
-	float gravitationalAcceleration;
-	float jumpAcceleration;
-	float verticalVelocity;
-	float horizontalAcceleration;
-	float xVelocity;
-	float zVelocity;
-	bool gravityOn;
-	bool currentGravitationalCollision;
-	bool isJumping;
+	// Object access pointers
 	Camera* camera;
 	WorldManager* world;
-	float breakBlockDelay;
-	std::pair<std::pair<int, bool>, std::pair<int, bool>> lastChunkFractional;
+
+	// Acceleration constants
+	float gravitationalAcceleration;
+	float jumpAcceleration;
+	float horizontalAcceleration;
+
+	// Current velocity values
+	float xVelocity;
+	float yVelocity;
+	float zVelocity;
+
+	// Player action state values
+	bool currentGravitationalCollision;
+	bool isJumping;
+
+	// Miscellanious
 	bool playerChunksReady;
+	bool gravityOn;
+	float blockUpdateDelay;
+
+	std::pair<std::pair<int, bool>, std::pair<int, bool>> lastChunkFractional;
 
 	std::pair<std::pair<int, int>, std::vector<BlockID>> playerChunks[2][2];
 };
