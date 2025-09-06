@@ -243,7 +243,7 @@ void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float delta
 			if (now - breakBlockDelay > 0.143) {
 				breakBlockDelay = now;
 				auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
-				if (returnVecs.first.x != NULL) {
+				if (returnVecs.first.x != std::numeric_limits<int>::min()) {
 					world->breakBlock(returnVecs.first.x, returnVecs.first.y, returnVecs.first.z);
 					playerChunksReady = false;
 					setPlayerChunks();
@@ -253,7 +253,7 @@ void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float delta
 		else if (keyStates[GLFW_MOUSE_BUTTON_LEFT] && !prevKeyStates[GLFW_MOUSE_BUTTON_LEFT]) {
 			breakBlockDelay = now;
 			auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
-			if (returnVecs.first.x != NULL) {
+			if (returnVecs.first.x != std::numeric_limits<int>::min()) {
 				world->breakBlock(returnVecs.first.x, returnVecs.first.y, returnVecs.first.z);
 				playerChunksReady = false;
 				setPlayerChunks();
@@ -264,7 +264,7 @@ void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float delta
 			if (now - breakBlockDelay > 0.143) {
 				breakBlockDelay = now;
 				auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
-				if (returnVecs.first.x != NULL) {
+				if (returnVecs.first.x != std::numeric_limits<int>::min()) {
 					glm::vec3 posToPlace = returnVecs.first + returnVecs.second;
 					if (!checkAnyPlayerCollision(posToPlace)) {
 						world->placeBlock(posToPlace.x, posToPlace.y, posToPlace.z, BlockID::DIRT);
@@ -277,7 +277,7 @@ void Player::processKeyboardInput(std::map<GLuint, bool> keyStates,  float delta
 		else if (keyStates[GLFW_MOUSE_BUTTON_RIGHT] && !prevKeyStates[GLFW_MOUSE_BUTTON_RIGHT]) {
 			auto returnVecs = raycast(camera->getCameraPos(), camera->getCameraFront(), 5);
 			glm::vec3 posToPlace = returnVecs.first + returnVecs.second;
-			if (returnVecs.first.x != NULL) {
+			if (returnVecs.first.x != std::numeric_limits<int>::min()) {
 				if (!checkAnyPlayerCollision(posToPlace)) {
                     world->placeBlock(posToPlace.x, posToPlace.y, posToPlace.z, BlockID::DIRT);
 					playerChunksReady = false;
@@ -425,7 +425,7 @@ std::pair<glm::vec3, glm::vec3> Player::raycast(glm::vec3 origin, glm::vec3 dire
 	glm::vec3 face;
 
 	if (dx == 0 && dy == 0 && dz == 0) {
-		return { {NULL, NULL, NULL}, {NULL, NULL, NULL} };
+		return { {std::numeric_limits<int>::min(), std::numeric_limits<int>::min(), std::numeric_limits<int>::min()}, {std::numeric_limits<int>::min(), std::numeric_limits<int>::min(), std::numeric_limits<int>::min()} };
 	}
 
 	radius /= sqrt(dx * dx + dy * dy + dz * dz);
@@ -481,5 +481,5 @@ std::pair<glm::vec3, glm::vec3> Player::raycast(glm::vec3 origin, glm::vec3 dire
 			}
 		}
 	}
-	return { {NULL, NULL, NULL}, {NULL, NULL, NULL} };
+	return { {std::numeric_limits<int>::min(), std::numeric_limits<int>::min(), std::numeric_limits<int>::min()}, {std::numeric_limits<int>::min(), std::numeric_limits<int>::min(), std::numeric_limits<int>::min()}};
 }
