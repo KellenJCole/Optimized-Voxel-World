@@ -3,10 +3,7 @@
 #include <iostream>
 
 ProcGen::ProcGen() : 
-	heightAmplitude(80),
-	blockResolution(0),
-	resolutionXZ(0),
-	resolutionY(0)
+	heightAmplitude(80)
 {
 	srand(time(NULL));
 	for (int i = 0; i < 4; i++) {
@@ -31,7 +28,7 @@ ProcGen::ProcGen() :
 
 int ProcGen::generateChunk(std::vector<BlockID>& chunkVec, std::pair<int, int> chunkCoordPair, int levelOfDetail) {
 	std::lock_guard<std::mutex> procGenLock(procGenMutex);
-	setLODVariables(levelOfDetail);
+	setLodVariables(levelOfDetail);
 	std::vector<std::vector<float>> hm = getHeightMap(chunkCoordPair);
 
 	const float globalMin = -1.0f; // Minimum possible Perlin noise value
@@ -155,7 +152,7 @@ void ProcGen::setNoiseState(std::vector<float> state) {
 	heightAmplitude = state[20];
 }
 
-void ProcGen::setLODVariables(int levelOfDetail) {
+void ProcGen::setLodVariables(int levelOfDetail) {
 	blockResolution = 1 << levelOfDetail;
 	resolutionXZ = ChunkUtils::WIDTH / blockResolution;
 	resolutionY = ChunkUtils::HEIGHT / blockResolution;

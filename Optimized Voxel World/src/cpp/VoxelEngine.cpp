@@ -10,7 +10,7 @@
 VoxelEngine::VoxelEngine() 
     : deltaTime(0.0f)
     , lastFrame(0.0f)
-    , fps(0)
+    , fps(std::numeric_limits<int>::min())
     , renderDebug(false)
     , imGuiCursor(false)
     , usePostProcessing(true)
@@ -69,7 +69,7 @@ bool VoxelEngine::initialize() {
         return false;
     }
 
-    if (!worldManager.initialize(&proceduralGeneration, &vertexPool))
+    if (!worldManager.initialize(&proceduralGenerator, &vertexPool))
         std::cout << "World Manager initialization failure\n";
 
     blockShader = Shader("src/res/shaders/Block.shader");
@@ -158,7 +158,7 @@ bool VoxelEngine::initialize() {
     debugUI.initialize();
     userInterface.initialize();
     player.initialize();
-    proceduralGenerationGui.initialize(window, &proceduralGeneration);
+    proceduralGenerationGui.initialize(window, &proceduralGenerator);
 
     worldManager.setWindowPointer(window);
 

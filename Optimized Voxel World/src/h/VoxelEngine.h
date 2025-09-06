@@ -35,7 +35,7 @@ private:
 	DebugUI debugUI;
 	UserInterface userInterface;;
 	ProcGenGui proceduralGenerationGui;
-	ProcGen proceduralGeneration;
+	ProcGen proceduralGenerator;
 
 	Player player;
 

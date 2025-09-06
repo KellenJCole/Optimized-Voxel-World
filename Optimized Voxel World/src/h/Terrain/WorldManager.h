@@ -56,7 +56,7 @@ private:
     VertexPool* vertexPool;
     Renderer renderer;
     ChunkLoader chunkLoader;
-    ProcGen* proceduralAlgorithm;
+    ProcGen* proceduralGenerator;
     TextureArray blockTextureArray;
 
     // Store unique_ptr to manage Chunk lifetimes

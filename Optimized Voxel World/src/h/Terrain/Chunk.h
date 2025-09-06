@@ -19,22 +19,20 @@ public:
 	Chunk();
 
 	// Setters
-	inline void setProcGenReference(ProcGen* pg) { proceduralAlgorithm = pg; }
-	inline void setWorldReference(WorldManager* wm) { world = wm; }
-	inline void setChunkCoords(int cx, int cz) { chunkX = cx; chunkZ = cz; }
-	void setLod(int detailLvl);
+	void setWorldReference(WorldManager* wm) { world = wm; }
+	void setChunkCoords(int cx, int cz) { chunkX = cx; chunkZ = cz; }
 
 	// Getters
 	const MeshUtils::MeshGraph& getMeshGraph(BlockFace faceType) { return greedyAlgorithm.getMeshGraph(faceType); }
-	inline int getChunkX() const { return chunkX; }
-	inline int getChunkZ() const { return chunkZ; }
-	inline int getCurrentLod() const { return detailLevel; }
+	int getChunkX() const { return chunkX; }
+	int getChunkZ() const { return chunkZ; }
+	int getCurrentLod() const { return detailLevel; }
 	BlockID getBlockAt(int worldX, int worldY, int worldZ);
 	BlockID getBlockAt(int worldX, int worldY, int worldZ, BlockFace face, int sourceLod);
 	std::vector<BlockID> getCurrChunkVec();
 
 	// Procedurally generate chunk and form meshes
-	void generateChunk();
+	void generateChunk(ProcGen& proceduralGenerator);
 	void startMeshing();
 	BlockFaceBitmask cullFaces(int blockIndex, std::vector<uint16_t>& neighborCache);
 	void markNeighborsCheck(int neighborIndex, BlockFace face, std::vector<uint16_t>& neighborCache);
@@ -47,33 +45,24 @@ public:
 	bool placeBlock(int localX, int localY, int localZ, BlockID blockToPlace);
 
 	// Change LOD
-	void convertLOD(int newLod);
+	void setLodVariables(int detailLvl); // sets variables related to level of detail
+	void convertLOD(int lod); // calls setLod & regenerates chunk
 
 	// Clear VisByFaceType (might need to do other things, this should be thought about harder)
 	void unload();
 
-	bool meshExists = false;
-	bool meshDirty = false;
-	int resolutionXZ, resolutionY;
-	int highestOccupiedIndex;
-	int detailLevel;
-
 private:
-	glm::ivec3 expandChunkCoords(int flatIndex);
+	glm::ivec3 expandChunkCoords(int flatIndex) const;
 
 	int neighborOffsets[6];
 
-	void setChunkLodMapVectorSize();
-
-	ProcGen* proceduralAlgorithm;
 	GreedyAlgorithm greedyAlgorithm;
 	std::map<int, std::vector<BlockID>> chunkLodMap;
 	std::map<BlockFace, std::vector<unsigned int>> visByFaceType;
 	WorldManager* world;
 
-	bool hasBeenGenerated[7];
-
-	// Basic variables related to level of detail
-	int blockResolution;
 	int chunkX, chunkZ;
+	int resolutionXZ, resolutionY;
+	int detailLevel;
+	int highestOccupiedIndex;
 };

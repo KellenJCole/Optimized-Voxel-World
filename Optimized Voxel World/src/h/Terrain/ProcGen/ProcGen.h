@@ -24,7 +24,7 @@ private:
 	float heightMapWeights[4];
 	int heightAmplitude;
 
-	void setLODVariables(int levelOfDetail);
+	void setLodVariables(int levelOfDetail);
 	inline int convert3DCoordinatesToFlatIndex(int x, int y, int z) {
 		return x + (z * resolutionXZ) + (y * resolutionXZ * resolutionXZ);
 	}
