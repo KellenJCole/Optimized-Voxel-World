@@ -9,3 +9,4 @@
 	- Exit  
 - Refactor Player (collision bugs, hacky code, etc)  
 - Refactor WorldManager (move meshing functions elsewhere?)  
+- Stop meshing faces the player will never see

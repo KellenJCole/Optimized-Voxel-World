@@ -54,9 +54,7 @@ BlockFaceBitmask Chunk::cullFaces(int blockIndex, std::vector<uint16_t>& neighbo
         BlockFace face = static_cast<BlockFace>(f);
 
         if (hasNeighborCheckBeenPerformed(blockIndex, face, neighborCache)) { // neighbor is cached
-            if (neighborCache[blockIndex] & CHECK_RESULT_MASK(toInt(face))) {
-                mask |= static_cast<BlockFaceBitmask>(1u << toInt(face));
-            }
+            if (neighborCache[blockIndex] & CHECK_RESULT_MASK(toInt(face))) mask |= static_cast<BlockFaceBitmask>(1u << toInt(face));
         } 
         else {
             bool neighborIsAir = false;
@@ -69,12 +67,8 @@ BlockFaceBitmask Chunk::cullFaces(int blockIndex, std::vector<uint16_t>& neighbo
             bool borderCheck = isBorderXNeg || isBorderXPos || isBorderZNeg || isBorderZPos;
 
             if (!borderCheck) { // Neighbor is within local chunk
-                if (localY == 0 && face == BlockFace::NEG_Y) {
-                    neighborIsAir = false;
-                }
-                else if (localY == (resolutionY - 1) && face == BlockFace::POS_Y) {
-                    neighborIsAir = true;
-                }
+                if (localY == 0 && face == BlockFace::NEG_Y) neighborIsAir = false;
+                else if (localY == (resolutionY - 1) && face == BlockFace::POS_Y) neighborIsAir = true;
                 else {
                     int neighborIndex = blockIndex + neighborOffsets[toInt(face)];
                     neighborIsAir = (chunkLodMap[detailLevel][neighborIndex] == BlockID::AIR);
@@ -109,9 +103,7 @@ BlockFaceBitmask Chunk::cullFaces(int blockIndex, std::vector<uint16_t>& neighbo
                 neighborIsAir = (world->getBlockAtGlobal(neighborX, neighborY, neighborZ, face, detailLevel) == BlockID::AIR);
             }
 
-            if (neighborIsAir) {
-                mask |= static_cast<BlockFaceBitmask>(1u << toInt(face));
-            }
+            if (neighborIsAir) mask |= static_cast<BlockFaceBitmask>(1u << toInt(face));
         }
     }
 
@@ -165,11 +157,9 @@ BlockID Chunk::getBlockAt(int worldX, int worldY, int worldZ, BlockFace face, in
             blocks[3] = chunkLodMap[detailLevel][ChunkUtils::flattenChunkCoords(localX + 1,     localY + 1,     localZ,         detailLevel)];
         }
 
-        for (int i = 0; i < 4; i++) {
-            if (blocks[i] == BlockID::AIR) {
-                return BlockID::AIR;
-            }
-        }
+        for (int i = 0; i < 4; i++) if (blocks[i] == BlockID::AIR) 
+            return BlockID::AIR;
+
         return BlockID::BEDROCK;  // arbitrary - solid
     }
 
@@ -219,9 +209,7 @@ bool Chunk::breakBlock(int localX, int localY, int localZ) {
 
 bool Chunk::placeBlock(int localX, int localY, int localZ, BlockID blockToPlace) {
     int flatIndex = ChunkUtils::flattenChunkCoords(localX, localY, localZ, detailLevel);
-    if (flatIndex > highestOccupiedIndex) {
-        highestOccupiedIndex = flatIndex;
-    }
+    if (flatIndex > highestOccupiedIndex) highestOccupiedIndex = flatIndex;
     chunkLodMap[detailLevel][flatIndex] = blockToPlace;
 
     return true;
@@ -240,8 +228,4 @@ glm::ivec3 Chunk::expandChunkCoords(int flatIndex) const {
 void Chunk::unload() {
     visByFaceType.clear();
     greedyAlgorithm.unload();
-}
-
-std::vector<BlockID> Chunk::getCurrChunkVec() {
-    return chunkLodMap[detailLevel];
 }

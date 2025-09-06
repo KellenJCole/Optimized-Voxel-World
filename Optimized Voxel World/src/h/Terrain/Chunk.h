@@ -29,7 +29,7 @@ public:
 	int getCurrentLod() const { return detailLevel; }
 	BlockID getBlockAt(int worldX, int worldY, int worldZ);
 	BlockID getBlockAt(int worldX, int worldY, int worldZ, BlockFace face, int sourceLod);
-	std::vector<BlockID> getCurrChunkVec();
+	std::vector<BlockID> getCurrChunkVec() { return chunkLodMap[detailLevel]; }
 
 	// Procedurally generate chunk and form meshes
 	void generateChunk(ProcGen& proceduralGenerator);
