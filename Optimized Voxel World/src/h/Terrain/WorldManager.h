@@ -59,8 +59,8 @@ private:
     ProcGen* proceduralGenerator;
     TextureArray blockTextureArray;
 
-    // Store unique_ptr to manage Chunk lifetimes
-    std::unordered_set<ChunkCoordPair, PairHash> worldKeysSet;
+    std::unordered_set<ChunkCoordPair, PairHash> chunkKeys;
+    std::unordered_set<ChunkCoordPair, PairHash> unmeshedKeys;
     std::vector<ChunkCoordPair> currentRenderChunks;
 
     // SHADER CAMERA LIGHTS

@@ -58,14 +58,11 @@ void WorldManager::updateRenderChunks(int originX, int originZ, int renderRadius
 } 
 
 void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadChunks) {
-	std::unordered_set<ChunkCoordPair, PairHash> toMesh;
 	for (const auto& key : loadChunks) {
-		if (stopAsync.load()) {
-			break;
-		}
+		if (stopAsync.load()) break;
 
 		int lod = calculateLevelOfDetail(key);
-		if (worldKeysSet.find(key) == worldKeysSet.end()) {
+		if (chunkKeys.find(key) == chunkKeys.end()) {
 			auto newChunk = std::make_unique<Chunk>();
 			newChunk->setChunkCoords(key.first, key.second);
 			newChunk->setWorldReference(this);
@@ -78,30 +75,38 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 				worldMap[key] = std::move(newChunk);
 			}
 			readyForPlayerUpdate = true;
-			worldKeysSet.insert(key);
-			toMesh.insert(key);
+			chunkKeys.insert(key);
+			unmeshedKeys.insert(key);
 		}
 	}
 
 	for (const auto& key : loadChunks) {
-		if (stopAsync.load()) {
-			break;
-		}
+		if (stopAsync.load()) break;
 
-		if (worldKeysSet.find(key) != worldKeysSet.end()) {
+		if (chunkKeys.find(key) != chunkKeys.end()) {
 			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 			int lod = calculateLevelOfDetail(key);
 			if (worldMap[key]->getCurrentLod() != lod) {
 				worldMap[key]->convertLOD(lod);
 				worldMap[key]->generateChunk(*proceduralGenerator);
-				toMesh.insert(key);
+				unmeshedKeys.insert(key);
+
+				unmeshedKeys.insert({ key.first - 1, key.second });
+				unmeshedKeys.insert({ key.first + 1, key.second });
+				unmeshedKeys.insert({ key.first, key.second - 1 });
+				unmeshedKeys.insert({ key.first, key.second + 1 });
 			}
 		}
 	}
 
-	for (const auto& key : toMesh) {
+	std::unordered_set<ChunkCoordPair, PairHash> meshedKeys;
+	for (const auto& key : unmeshedKeys) {
+		if (stopAsync.load()) break;
 		genChunkMesh(key);
+		meshedKeys.insert(key);
 	}
+
+	for (const auto& key : meshedKeys) unmeshedKeys.erase(key);
 }
 
 int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
@@ -155,7 +160,7 @@ void WorldManager::unloadChunks(const std::vector<std::pair<int, int>>& loadChun
 		}
 
 		for (const auto& key : keysToDelete) {
-			worldKeysSet.erase(key);
+			chunkKeys.erase(key);
 			vertexPool->freeBucket(key);
 			worldMap.erase(key);
 		}
@@ -166,7 +171,7 @@ void WorldManager::unloadChunks(const std::vector<std::pair<int, int>>& loadChun
 		std::lock_guard<std::recursive_mutex> renderLock(renderBuffersMtx, std::adopt_lock);
 
 		for (const auto& key : worldMap) {
-			worldKeysSet.erase(key.first);
+			chunkKeys.erase(key.first);
 			vertexPool->freeBucket(key.first);
 		}
 		worldMap.clear();
@@ -178,7 +183,7 @@ BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ) {
 	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
 	std::pair<int, int> chunkKey = { chunkX, chunkZ };
 
-	if (worldKeysSet.find(chunkKey) != worldKeysSet.end()) {
+	if (chunkKeys.find(chunkKey) != chunkKeys.end()) {
 
 		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 		return worldMap[chunkKey]->getBlockAt(worldX, worldY, worldZ);
@@ -193,7 +198,7 @@ BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, Block
 	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
 	std::pair<int, int> chunkKey = { chunkX, chunkZ };
 
-	if (worldKeysSet.find(chunkKey) != worldKeysSet.end()) {
+	if (chunkKeys.find(chunkKey) != chunkKeys.end()) {
 		return worldMap[chunkKey]->getBlockAt(worldX, worldY, worldZ, face, sourceLod);
 	}
 	else {
@@ -207,7 +212,7 @@ void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
 	ChunkCoordPair key = { chunkX, chunkZ };
 	{
 
-		if (worldKeysSet.find(key) != worldKeysSet.end()) {
+		if (chunkKeys.find(key) != chunkKeys.end()) {
 			int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
 			int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
 
@@ -244,7 +249,7 @@ void WorldManager::placeBlock(int worldX, int worldY, int worldZ, BlockID blockT
 	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
 	ChunkCoordPair key = { chunkX, chunkZ };
 
-	if (worldKeysSet.find(key) != worldKeysSet.end()) {
+	if (chunkKeys.find(key) != chunkKeys.end()) {
 		int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
 		int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
 
@@ -276,17 +281,13 @@ void WorldManager::placeBlock(int worldX, int worldY, int worldZ, BlockID blockT
 }
 
 void WorldManager::genChunkMesh(ChunkCoordPair key) {
-	// Check if the chunk exists in the worldKeysSet
-	if (worldKeysSet.find(key) == worldKeysSet.end()) {
-		std::cerr << "genMeshForSingleChunk - Chunk not found or is null: (" << key.first << ", " << key.second << ")\n";
-		return;
-	}
-
 	// Check/set chunk's mesh states
 	int lod;
 	Chunk* chunk;
 	{
 		std::lock_guard<std::recursive_mutex> lock(worldMapMtx);
+		if (worldMap.find(key) == worldMap.end()) return; // this happens sometimes... How? I'll find out another time...
+
 		chunk = worldMap[key].get();
 
 		lod = chunk->getCurrentLod();
