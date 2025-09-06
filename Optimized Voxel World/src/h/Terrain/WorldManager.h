@@ -64,10 +64,10 @@ private:
     std::vector<ChunkCoordPair> currentRenderChunks;
 
     // SHADER CAMERA LIGHTS
-    Shader* shader;
+    Shader* shader;  // this is undescriptive but its 3am and im not looking into it
     Camera* camera;
-    glm::vec3 lightPos;
-    glm::vec3 lightColor;
+    glm::vec3 lightPos; // surely this shouldn't be here
+    glm::vec3 lightColor; // or this
 
     // MULTITHREAD
     std::future<void> loadFuture;

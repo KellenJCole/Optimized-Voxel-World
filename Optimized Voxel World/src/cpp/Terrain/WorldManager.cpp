@@ -119,27 +119,13 @@ int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
 	float distance = (float)(sqrt(pow(abs(ccp.first - cameraKey.first), 2) + pow(abs(ccp.second - cameraKey.second), 2)));
 
 	// These values are random af, need to put more thought into it
-	if (distance <= 10) {
-		return 0;
-	}
-	else if (distance <= 25) {
-		return 1;
-	}
-	else if (distance <= 50) {
-		return 2;
-	}
-	else if (distance <= 70) {
-		return 3;
-	}
-	else if (distance <= 100) {
-		return 4;
-	}
-	else if (distance <= 512) {
-		return 5;
-	}
-	else {
-		return 6;
-	}
+	if (distance <= 10) return 0;
+	else if (distance <= 25) return 1;
+	else if (distance <= 50) return 2;
+	else if (distance <= 70) return 3;
+	else if (distance <= 100) return 4;
+	else if (distance <= 512) return 5;
+	else return 6;
 }
 
 void WorldManager::unloadChunks(const std::vector<std::pair<int, int>>& loadChunks, bool all) { // all - unload ALL for regeneration or unload those out of render distance
@@ -184,7 +170,6 @@ BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ) {
 	std::pair<int, int> chunkKey = { chunkX, chunkZ };
 
 	if (chunkKeys.find(chunkKey) != chunkKeys.end()) {
-
 		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 		return worldMap[chunkKey]->getBlockAt(worldX, worldY, worldZ);
 	}
@@ -317,15 +302,7 @@ void WorldManager::genChunkMesh(ChunkCoordPair key) {
 		for (const auto& slice : greedyMeshes[f]) {
             int sliceIdx = slice.sliceIndex;
 			for (const auto& quad : slice.quads) {
-				addVerticesForQuad(
-					verts, inds, 
-					quad, 
-					key, 
-					f, 
-					sliceIdx, 
-					lod, 
-					baseIndex
-				);
+				addVerticesForQuad(verts, inds, quad, key, f, sliceIdx, lod, baseIndex);
 				baseIndex += 4;
 			}
 		}
@@ -341,8 +318,7 @@ void WorldManager::genChunkMesh(ChunkCoordPair key) {
 	}
 }
 
-void WorldManager::addVerticesForQuad(std::vector<Vertex>& verts, std::vector<unsigned int>& inds, MeshUtils::Quad quad, ChunkCoordPair chunkCoords,
-        int faceType, int sliceIndex, int levelOfDetail, unsigned int baseIndex) {
+void WorldManager::addVerticesForQuad(std::vector<Vertex>& verts, std::vector<unsigned int>& inds, MeshUtils::Quad quad, ChunkCoordPair chunkCoords, int faceType, int sliceIndex, int levelOfDetail, unsigned int baseIndex) {
 	// Calculate positions for each corner of the quad
 	glm::vec3 bl = calculatePosition(quad, 0, faceType, chunkCoords, sliceIndex, levelOfDetail);
     glm::vec3 br = calculatePosition(quad, 1, faceType, chunkCoords, sliceIndex, levelOfDetail);
