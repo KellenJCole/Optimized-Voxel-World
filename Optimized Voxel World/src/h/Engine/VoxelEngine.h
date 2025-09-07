@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include "h/Engine/AppWindow.h"
+#include "h/Rendering/PostProcessingPass.h"
 #include "h/Terrain/WorldManager.h"
 #include "h/Rendering/Shader.h"
 #include "h/Rendering/Camera.h"
@@ -57,10 +58,6 @@ private:
 
 	float swapRenderMethodCooldown;
 
-	GLuint framebuffer;
-	GLuint textureColorBuffer;
-	GLuint rbo;
-	Shader postProcessingShader;
-	GLuint quadVAO, quadVBO;
-	bool usePostProcessing;
+	PostProcessingPass postFX;
+	bool usePostProcessing = true;
 };

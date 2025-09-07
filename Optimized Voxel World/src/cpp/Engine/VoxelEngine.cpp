@@ -30,22 +30,23 @@ bool VoxelEngine::initialize() {
         WindowDetails::WindowHeight,
         "Voxel Engine",
         4, 6,
-        /* vsync*/ false,
-        /* samples */ 4,
-        /* x */ 160,
-        /* y */ 90
+        /* vsync*/      false,
+        /* samples */   4,
+        /* x */         160,
+        /* y */         90
     };
 
     if (!app.initialize(info)) return false;
+    if (!postFX.init(info.width, info.height, "src/res/shaders/PostProcessingArtifact.shader")) {
+        std::cerr << "PostFX init failed\n";
+        return false;
+    }
+
     app.setCursorDisabled(true);
 
     app.onResize = [this](int w, int h) {
         GLCall(glViewport(0, 0, w, h));
-        // If you render to an FBO, resize attachments here:
-        GLCall(glBindTexture(GL_TEXTURE_2D, textureColorBuffer));
-        GLCall(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr));
-        GLCall(glBindRenderbuffer(GL_RENDERBUFFER, rbo));
-        GLCall(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h));
+        postFX.resize(w, h);
     };
 
     app.onCursor = [this](double x, double y) {
@@ -61,57 +62,11 @@ bool VoxelEngine::initialize() {
     }
 
     if (!worldManager.initialize(&proceduralGenerator, &vertexPool))
-        std::cout << "World Manager initialization failure\n";
+        std::cout << "World Manager failed to initialize\n";
 
     blockShader = Shader("src/res/shaders/Block.shader");
     debugShader = Shader("src/res/shaders/Debug.shader");
     userInterfaceShader = Shader("src/res/shaders/UserInterface.shader");
-
-    GLCall(glGenFramebuffers(1, &framebuffer));
-    GLCall(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer));
-
-    GLCall(glGenTextures(1, &textureColorBuffer));
-    GLCall(glBindTexture(GL_TEXTURE_2D, textureColorBuffer));
-    GLCall(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WindowDetails::WindowWidth, WindowDetails::WindowHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL));
-    GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
-    GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-    GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-    GLCall(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-    GLCall(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0));
-
-    GLCall(glGenRenderbuffers(1, &rbo));
-    GLCall(glBindRenderbuffer(GL_RENDERBUFFER, rbo));
-    GLCall(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, WindowDetails::WindowWidth, WindowDetails::WindowHeight));
-    GLCall(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo));
-
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        std::cerr << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-        return false;
-    }
-    GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-
-    postProcessingShader = Shader("src/res/shaders/PostProcessingArtifact.shader");
-
-    float quadVertices[] = {
-        -1.0f,  1.0f,  0.0f, 1.0f,
-        -1.0f, -1.0f,  0.0f, 0.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-
-        -1.0f,  1.0f,  0.0f, 1.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-         1.0f,  1.0f,  1.0f, 1.0f
-    };
-
-    GLCall(glGenVertexArrays(1, &quadVAO));
-    GLCall(glGenBuffers(1, &quadVBO));
-    GLCall(glBindVertexArray(quadVAO));
-    GLCall(glBindBuffer(GL_ARRAY_BUFFER, quadVBO));
-    GLCall(glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW));
-    GLCall(glEnableVertexAttribArray(0));
-    GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0));
-    GLCall(glEnableVertexAttribArray(1));
-    GLCall(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float))));
-    GLCall(glBindVertexArray(0));
 
     debugShader.use();
     glm::mat4 projection = glm::ortho(0.0f, (float)WindowDetails::WindowWidth, 0.0f, (float)WindowDetails::WindowHeight);
@@ -215,6 +170,7 @@ void VoxelEngine::processInput() {
 		if (keyStates[GLFW_KEY_P] && !lastKeyStates[GLFW_KEY_P]) usePostProcessing = !usePostProcessing;    // P -> Toggle post-processing shader
         if (keyStates[GLFW_KEY_G] && !lastKeyStates[GLFW_KEY_G]) player.toggleGravity();                    // G -> Toggle gravity
         if (keyStates[GLFW_KEY_I] && !lastKeyStates[GLFW_KEY_I]) renderDebug = !renderDebug;                // I -> Toggle debug text
+
         if (keyStates[GLFW_KEY_UP] && !lastKeyStates[GLFW_KEY_UP]) {                                        // Up arrow -> Increase render radius by 1
             if (renderRadius < 512) {
                 renderRadius++;
@@ -252,14 +208,12 @@ void VoxelEngine::update() {
 }
 
 void VoxelEngine::render() {
-    if (usePostProcessing) {
-        GLCall(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer)); 
-    }
+    if (usePostProcessing) postFX.beginScene();
     else {
         GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+        GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
     }
 
-    GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
     GLCall(glClearColor(0.529f, 0.808f, 0.922f, 0.2f));
     
     glm::vec3 viewPos = camera.getCameraPos();
@@ -270,22 +224,15 @@ void VoxelEngine::render() {
     blockShader.setUniform4fv("projection", (glm::mat4&)camera.getProjection());
     // Render stuff below here
     proceduralGenerationGui.startLoop();
+
+    GLCall(glEnable(GL_DEPTH_TEST));
     worldManager.render();
 
     if (usePostProcessing) {
-        GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-        GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-
-        postProcessingShader.use();
-
-        GLCall(glActiveTexture(GL_TEXTURE0));
-        GLCall(glBindTexture(GL_TEXTURE_2D, textureColorBuffer));
-        postProcessingShader.setUniform1i("screenTexture", 0);
-        GLCall(glBindVertexArray(quadVAO));
-        GLCall(glDrawArrays(GL_TRIANGLES, 0, 6));
+        GLCall(glDisable(GL_DEPTH_TEST));
+        postFX.blitToScreen();
+        GLCall(glEnable(GL_DEPTH_TEST));
     }
-
-    GLCall(glDisable(GL_DEPTH_TEST));
 
     GLCall(glEnable(GL_BLEND));
     GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
@@ -302,8 +249,6 @@ void VoxelEngine::render() {
     }
 
     userInterface.render(userInterfaceShader);
-    
-    GLCall(glEnable(GL_DEPTH_TEST));
 
     proceduralGenerationGui.endLoop();
 }
@@ -315,6 +260,7 @@ void VoxelEngine::cleanup() {
     debugShader.deleteProgram();
     userInterfaceShader.deleteProgram();
     app.close();
+    postFX.destroy();
 }
 
 void VoxelEngine::processMouseInput(double xpos, double ypos) {
