@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include "h/Engine/AppWindow.h"
+#include "h/Engine/InputManager.h"
 #include "h/Rendering/PostProcessingPass.h"
 #include "h/Terrain/WorldManager.h"
 #include "h/Rendering/Shader.h"
@@ -26,6 +27,7 @@ private:
 	void processMouseInput(double xpos, double ypos);
 
 	AppWindow app;
+	InputManager input;
 	WorldManager worldManager;
 	Shader blockShader, debugShader, userInterfaceShader;
 	Camera camera;
@@ -48,16 +50,9 @@ private:
 	float fpsUpdateTime;
 
 	bool imGuiCursor;
-	std::map<GLuint, bool> keyStates;
-	std::map<GLuint, bool> lastKeyStates;
-	std::map<GLuint, bool> playerKeyStates;
-	static const GLuint engineKeys[7];
-	static const GLuint playerKeys[6];
 
 	int renderRadius;
 
-	float swapRenderMethodCooldown;
-
 	PostProcessingPass postFX;
-	bool usePostProcessing = true;
+	bool usePostProcessing;
 };

@@ -25,6 +25,7 @@ VoxelEngine::VoxelEngine()
 }
 
 bool VoxelEngine::initialize() {
+    // Create the default window info
     AppWindow::WindowInfo info{
         WindowDetails::WindowWidth,
         WindowDetails::WindowHeight,
@@ -36,11 +37,32 @@ bool VoxelEngine::initialize() {
         /* y */         90
     };
 
+    // Initialize objects
     if (!app.initialize(info)) return false;
     if (!postFX.init(info.width, info.height, "src/res/shaders/PostProcessingArtifact.shader")) {
         std::cerr << "PostFX init failed\n";
         return false;
     }
+    GLFWwindow* win = app.getWindowPtr();
+    input.setWindow(win);
+
+    if (!debugUI.initialize()) {
+        std::cerr << "DebugUI init failed\n";
+        return false;
+    }
+    if (!userInterface.initialize()) {
+        std::cerr << "User interface init failed\n";
+        return false;
+    }
+    proceduralGenerationGui.initialize(win, &proceduralGenerator);
+    if (!vertexPool.initialize()) {
+        std::cerr << "VertexPool failed to initialize.\n";
+        return false;
+    }
+
+    if (!worldManager.initialize(&proceduralGenerator, &vertexPool))
+        std::cerr << "World Manager failed to initialize\n";
+    worldManager.setWindowPointer(win);
 
     app.setCursorDisabled(true);
 
@@ -56,14 +78,6 @@ bool VoxelEngine::initialize() {
     GLCall(glEnable(GL_BLEND));
     GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-    if (!vertexPool.initialize()) {
-        std::cerr << "VertexPool failed to initialize.\n";
-        return false;
-    }
-
-    if (!worldManager.initialize(&proceduralGenerator, &vertexPool))
-        std::cout << "World Manager failed to initialize\n";
-
     blockShader = Shader("src/res/shaders/Block.shader");
     debugShader = Shader("src/res/shaders/Debug.shader");
     userInterfaceShader = Shader("src/res/shaders/UserInterface.shader");
@@ -76,38 +90,10 @@ bool VoxelEngine::initialize() {
     userInterfaceShader.setUniform4fv("projection", projection);
 
     camera = Camera(0.2);
-    swapRenderMethodCooldown = 0.0f;
     worldManager.passObjectPointers(&blockShader, &camera);
 
     player.setCamera(&camera);
     player.setWorld(&worldManager);
-    
-    keyStates[GLFW_KEY_F] = false;                      // Toggle polygon fill mode
-    keyStates[GLFW_KEY_G] = false;                      // Toggle gravity
-    keyStates[GLFW_KEY_I] = false;                      // Toggle debug text rendering
-    keyStates[GLFW_KEY_UP] = false;                     // Increase render distance
-    keyStates[GLFW_KEY_DOWN] = false;                   // Decrease render distance
-    keyStates[GLFW_KEY_ESCAPE] = false;                 // Switch cursor mode
-    keyStates[GLFW_KEY_P] = false;                      // Toggle Post-Processing Shader
-
-    lastKeyStates = keyStates;
-
-    playerKeyStates[GLFW_KEY_W] = false;                // Move forward
-    playerKeyStates[GLFW_KEY_A] = false;                // Walk left
-    playerKeyStates[GLFW_KEY_S] = false;                // Walk backwards
-    playerKeyStates[GLFW_KEY_D] = false;                // Walk right
-    playerKeyStates[GLFW_KEY_SPACE] = false;            // Jump
-    playerKeyStates[GLFW_KEY_LEFT_SHIFT] = false;       // Move down (when gravity off)
-    playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] = false;    // Break block
-    playerKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = false;   // Place block
-
-    debugUI.initialize();
-    userInterface.initialize();
-
-    GLFWwindow* win = app.getWindowPtr();
-
-    proceduralGenerationGui.initialize(win, &proceduralGenerator);
-    worldManager.setWindowPointer(win);
 
     return true;
 }
@@ -144,48 +130,34 @@ void VoxelEngine::processInput() {
     GLFWwindow* win = app.getWindowPtr();
     float currFrame = app.time();
 
-    for (int i = 0; i < 7; i++) keyStates[engineKeys[i]] = (glfwGetKey(win, engineKeys[i]) == GLFW_PRESS);
-    for (int i = 0; i < 6; i++) playerKeyStates[playerKeys[i]] = (glfwGetKey(win, playerKeys[i]) == GLFW_PRESS);
+    InputEvents ev = input.poll(imGuiCursor);
 
-    playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] = (glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
-    playerKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = (glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS);
-
-    if (keyStates[GLFW_KEY_ESCAPE] && !lastKeyStates[GLFW_KEY_ESCAPE]) {    // Esc - Switch cursor mode
+    if (ev.cursorToggle) {                                      // Escape -> switch cursor mode
         imGuiCursor = !imGuiCursor;
         app.setCursorDisabled(!imGuiCursor);
-
         if (imGuiCursor) {
-            for (int i = 0; i < 6; i++) playerKeyStates[playerKeys[i]] = false;
-
-            playerKeyStates[GLFW_MOUSE_BUTTON_LEFT] = false;
-            playerKeyStates[GLFW_MOUSE_BUTTON_RIGHT] = false;
-            player.processKeyboardInput(playerKeyStates, deltaTime);
+            auto cleared = ev.playerStates;
+            for (auto& p : cleared) p.second = false;
+            player.processKeyboardInput(cleared, deltaTime);
         }
     }
 
-    if (!imGuiCursor) player.processKeyboardInput(playerKeyStates, deltaTime);
+    if (!imGuiCursor) player.processKeyboardInput(ev.playerStates, deltaTime);
 
     if (!imGuiCursor) {
-        if (keyStates[GLFW_KEY_F] && !lastKeyStates[GLFW_KEY_F]) worldManager.switchRenderMethod();         // F -> Toggle polygon line/fill
-		if (keyStates[GLFW_KEY_P] && !lastKeyStates[GLFW_KEY_P]) usePostProcessing = !usePostProcessing;    // P -> Toggle post-processing shader
-        if (keyStates[GLFW_KEY_G] && !lastKeyStates[GLFW_KEY_G]) player.toggleGravity();                    // G -> Toggle gravity
-        if (keyStates[GLFW_KEY_I] && !lastKeyStates[GLFW_KEY_I]) renderDebug = !renderDebug;                // I -> Toggle debug text
+        if (ev.toggleWireframe) worldManager.switchRenderMethod();              // F
+		if (ev.togglePostFX) usePostProcessing = !usePostProcessing;            // P
+        if (ev.toggleGravity) player.toggleGravity();                           // G
+        if (ev.toggleDebug) renderDebug = !renderDebug;                         // I
 
-        if (keyStates[GLFW_KEY_UP] && !lastKeyStates[GLFW_KEY_UP]) {                                        // Up arrow -> Increase render radius by 1
-            if (renderRadius < 512) {
-                renderRadius++;
-                worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
-            }
-        }
-        if (keyStates[GLFW_KEY_DOWN] && !lastKeyStates[GLFW_KEY_DOWN]) {                                    // Down arrow -> Decrease render radius by 1
-            if (renderRadius > 1) {
-                renderRadius--;
+        if (ev.renderRadiusDelta != 0) {                                        // Up/down arrow
+            int newRadius = renderRadius + ev.renderRadiusDelta;
+            if (newRadius >= 1 && renderRadius < 512) {
+                renderRadius = newRadius;
                 worldManager.updateRenderChunks(currChunkX, currChunkZ, renderRadius, false);
             }
         }
     }
-
-    lastKeyStates = keyStates;
 }
 
 void VoxelEngine::update() {
@@ -205,6 +177,8 @@ void VoxelEngine::update() {
 
     lastChunkX = currChunkX;
     lastChunkZ = currChunkZ;
+
+    camera.update();
 }
 
 void VoxelEngine::render() {
@@ -216,8 +190,6 @@ void VoxelEngine::render() {
 
     GLCall(glClearColor(0.529f, 0.808f, 0.922f, 0.2f));
     
-    glm::vec3 viewPos = camera.getCameraPos();
-    camera.update();
     blockShader.use();
 
     blockShader.setUniform4fv("view", (glm::mat4&)camera.getView());
@@ -266,7 +238,3 @@ void VoxelEngine::cleanup() {
 void VoxelEngine::processMouseInput(double xpos, double ypos) {
     if (!imGuiCursor) camera.processMouseMovement(xpos, ypos);
 }
-
-const GLuint VoxelEngine::engineKeys[7] = { GLFW_KEY_F, GLFW_KEY_G, GLFW_KEY_I, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_ESCAPE, GLFW_KEY_P };
-
-const GLuint VoxelEngine::playerKeys[6] = { GLFW_KEY_W, GLFW_KEY_A, GLFW_KEY_S, GLFW_KEY_D, GLFW_KEY_SPACE, GLFW_KEY_LEFT_SHIFT };
