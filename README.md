@@ -47,6 +47,7 @@ Once I feel performance is efficient enough, and bug-free, I will move on to int
 - Down Arrow: decrease render distance
 - Escape: unlock cursor
 - P: Toggle post-processing shader (hides T-junction errors)
+- B: Render entity boxes (for collisions)
 - Space: Jump or move up (if gravity is disabled)
 - Left Shift: Move down (if gravity is disabled)
 - Left click: Place block
