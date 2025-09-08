@@ -2,11 +2,14 @@
 #include <vector>
 #include <iostream>
 
-WorldManager::WorldManager() :
-	lightPos(0.0f, 500.f, 0.0f),
-	lightColor(0.9f, 1.f, 0.7f),
-	updatedRenderChunks(false),
-	readyForPlayerUpdate(false)
+WorldManager::WorldManager()
+	: vertexPool(nullptr)
+	, proceduralGenerator(nullptr)
+	, camera(nullptr)
+	, updatedRenderChunks(false)
+	, readyForPlayerUpdate(false)
+	, renderRadius(std::numeric_limits<int>::min())
+
 {
 	lastFrustumCheck = glfwGetTime();
 	stopAsync.store(false);
@@ -15,14 +18,12 @@ WorldManager::WorldManager() :
 bool WorldManager::initialize(ProcGen* pg, VertexPool* vp) {
 
 	if (!renderer.initialize()) {
-		std::cout << "Renderer failed to initialize in World Manager\n";
+		std::cerr << "Renderer failed to initialize in World Manager\n";
 		return false;
 	}
 
 	vertexPool = vp;
 	renderer.setVertexPoolPointer(vp);
-
-	blockTextureArray = TextureArray({ "blocks/dirt.png", "blocks/grass_top.png", "blocks/grass_side.png", "blocks/stone.png", "blocks/bedrock.png", "blocks/sand.png", "blocks/water.png"}, false);
 
 	proceduralGenerator = pg;
 
@@ -118,7 +119,7 @@ int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
 	
 	float distance = (float)(sqrt(pow(abs(ccp.first - cameraKey.first), 2) + pow(abs(ccp.second - cameraKey.second), 2)));
 
-	// These values are random af, need to put more thought into it
+	// These values aren't final
 	if (distance <= 10) return 0;
 	else if (distance <= 25) return 1;
 	else if (distance <= 50) return 2;
@@ -173,9 +174,7 @@ BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ) {
 		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 		return worldMap[chunkKey]->getBlockAt(worldX, worldY, worldZ);
 	}
-	else {
-		return BlockID::NONE;
-	}
+	else return BlockID::NONE;
 }
 
 BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, BlockFace face, int sourceLod) {
@@ -184,11 +183,10 @@ BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, Block
 	std::pair<int, int> chunkKey = { chunkX, chunkZ };
 
 	if (chunkKeys.find(chunkKey) != chunkKeys.end()) {
+		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 		return worldMap[chunkKey]->getBlockAt(worldX, worldY, worldZ, face, sourceLod);
 	}
-	else {
-		return BlockID::NONE;
-	}
+	else return BlockID::NONE;
 }
 
 void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
@@ -462,15 +460,7 @@ glm::vec2 WorldManager::calculateTexCoords(MeshUtils::Quad& quad, int corner) {
 }
 
 void WorldManager::render() {
-	blockTextureArray.Bind();
-
-	shader->setUniform4fv("view", (glm::mat4&)camera->getView());
-	shader->setUniform4fv("projection", (glm::mat4&)camera->getProjection());
-
-	shader->setVec3("lightPos", lightPos);
-	shader->setVec3("lightColor", lightColor);
-	shader->setVec3("viewPos", (glm::vec3&)camera->getCameraPos());
-
+	renderer.updateShaderUniforms((glm::mat4&)camera->getView(), (glm::mat4&)camera->getProjection(), (glm::vec3&)camera->getCameraPos());
 	renderer.render();
 }
 

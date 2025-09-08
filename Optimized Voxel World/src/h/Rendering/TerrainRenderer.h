@@ -3,6 +3,7 @@
 #include "h/Rendering/Buffering/VertexArray.h"
 #include "h/Rendering/Buffering/VertexBuffer.h"
 #include "h/Rendering/Buffering/IndexBuffer.h"
+#include "h/Rendering/Buffering/TextureArray.h"
 #include "h/Rendering/Shader.h"
 #include "h/Rendering/Utility/BlockGeometry.h"
 #include "h/Rendering/VertexPool.h"
@@ -12,10 +13,11 @@
 #include <map>
 #include <mutex>
 
-class Renderer {
+class TerrainRenderer {
 public:
-    Renderer();
-    ~Renderer();
+    TerrainRenderer();
+    ~TerrainRenderer();
+
     bool initialize();
     void render();
     void updateRenderChunks(std::vector<std::pair<int, int>>& renderChunks);
@@ -23,15 +25,24 @@ public:
     void toggleFillLine();
     void setWindowPointer(GLFWwindow* w);
 	void setVertexPoolPointer(VertexPool* vp);
+    void updateShaderUniforms(glm::mat4& view, glm::mat4& projection, glm::vec3& viewPos);
 private:
-    GLFWwindow* window;
-    int width, height;
-    VertexArray vertexArray;
-	VertexPool* vertexPool;
-    std::mutex renderMtx;
-    std::vector<std::pair<int, int>> chunksBeingRendered;
-
     void setupVertexAttributes();
 
+    int width, height;
     bool gl_fill;
+
+    glm::vec3 lightPos;
+    glm::vec3 lightColor;
+
+    GLFWwindow* window;
+	VertexPool* vertexPool;
+    Shader terrainShader;
+
+    VertexArray vertexArray;
+    TextureArray blockTextureArray;
+
+    std::mutex renderMtx;
+
+    std::vector<std::pair<int, int>> chunksBeingRendered;
 };
