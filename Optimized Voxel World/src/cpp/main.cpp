@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "h/VoxelEngine.h"
+#include "h/Engine/VoxelEngine.h"
 
 int main() {
 	VoxelEngine engine;

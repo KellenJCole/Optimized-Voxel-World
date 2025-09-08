@@ -1,5 +1,4 @@
 #include "h/Engine/VoxelEngine.h"
-#include "h/Rendering/Shader.h"
 #include "h/Rendering/Utility/GLErrorCatcher.h"
 
 #include <iostream>
@@ -56,12 +55,12 @@ bool VoxelEngine::initialize() {
     }
     proceduralGenerationGui.initialize(win, &proceduralGenerator);
     if (!vertexPool.initialize()) {
-        std::cerr << "VertexPool failed to initialize.\n";
+        std::cerr << "VertexPool init failed.\n";
         return false;
     }
 
     if (!worldManager.initialize(&proceduralGenerator, &vertexPool))
-        std::cerr << "World Manager failed to initialize\n";
+        std::cerr << "World Manager init failed\n";
     worldManager.setWindowPointer(win);
 
     app.setCursorDisabled(true);
@@ -78,7 +77,6 @@ bool VoxelEngine::initialize() {
     GLCall(glEnable(GL_BLEND));
     GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-    blockShader = Shader("src/res/shaders/Block.shader");
     debugShader = Shader("src/res/shaders/Debug.shader");
     userInterfaceShader = Shader("src/res/shaders/UserInterface.shader");
 
@@ -90,7 +88,7 @@ bool VoxelEngine::initialize() {
     userInterfaceShader.setUniform4fv("projection", projection);
 
     camera = Camera(0.2);
-    worldManager.passObjectPointers(&blockShader, &camera);
+    worldManager.passCameraPointer(&camera);
 
     player.setCamera(&camera);
     player.setWorld(&worldManager);
@@ -132,7 +130,7 @@ void VoxelEngine::processInput() {
 
     InputEvents ev = input.poll(imGuiCursor);
 
-    if (ev.cursorToggle) {                                      // Escape -> switch cursor mode
+    if (ev.cursorToggle) {                                                      // Escape
         imGuiCursor = !imGuiCursor;
         app.setCursorDisabled(!imGuiCursor);
         if (imGuiCursor) {
@@ -182,18 +180,15 @@ void VoxelEngine::update() {
 }
 
 void VoxelEngine::render() {
+    GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+
     if (usePostProcessing) postFX.beginScene();
     else {
         GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-        GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
     }
 
     GLCall(glClearColor(0.529f, 0.808f, 0.922f, 0.2f));
     
-    blockShader.use();
-
-    blockShader.setUniform4fv("view", (glm::mat4&)camera.getView());
-    blockShader.setUniform4fv("projection", (glm::mat4&)camera.getProjection());
     // Render stuff below here
     proceduralGenerationGui.startLoop();
 
@@ -228,7 +223,6 @@ void VoxelEngine::render() {
 
 void VoxelEngine::cleanup() {
     worldManager.cleanup();
-    blockShader.deleteProgram();
     debugShader.deleteProgram();
     userInterfaceShader.deleteProgram();
     app.close();

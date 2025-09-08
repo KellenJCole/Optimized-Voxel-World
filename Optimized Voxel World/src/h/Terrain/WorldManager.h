@@ -8,8 +8,7 @@
 #include "h/Terrain/Chunk.h"
 #include "h/Terrain/ChunkLoader.h"
 #include "h/Rendering/Camera.h"
-#include "h/Rendering/Renderer.h"
-#include "h/Rendering/Buffering/TextureArray.h"
+#include "h/Rendering/TerrainRenderer.h"
 
 using ChunkCoordPair = std::pair<int, int>;
 
@@ -34,7 +33,7 @@ public:
     std::vector<BlockID> getChunkVector(ChunkCoordPair key);
 
     void setWindowPointer(GLFWwindow* window) { renderer.setWindowPointer(window); }
-    void passObjectPointers(Shader* sha, Camera* cam) { shader = sha; camera = cam; }
+    void passCameraPointer(Camera* cam) { camera = cam; }
     bool getReadyForPlayerUpdate() { return readyForPlayerUpdate; }
     void switchRenderMethod() { renderer.toggleFillLine(); }
 
@@ -54,20 +53,15 @@ private:
     int calculateLevelOfDetail(ChunkCoordPair ccp);
 
     VertexPool* vertexPool;
-    Renderer renderer;
+    TerrainRenderer renderer;
     ChunkLoader chunkLoader;
     ProcGen* proceduralGenerator;
-    TextureArray blockTextureArray;
 
     std::unordered_set<ChunkCoordPair, PairHash> chunkKeys;
     std::unordered_set<ChunkCoordPair, PairHash> unmeshedKeys;
     std::vector<ChunkCoordPair> currentRenderChunks;
 
-    // SHADER CAMERA LIGHTS
-    Shader* shader;  // this is undescriptive but its 3am and im not looking into it
     Camera* camera;
-    glm::vec3 lightPos; // surely this shouldn't be here
-    glm::vec3 lightColor; // or this
 
     // MULTITHREAD
     std::future<void> loadFuture;

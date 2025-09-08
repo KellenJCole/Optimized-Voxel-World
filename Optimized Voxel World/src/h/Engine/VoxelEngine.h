@@ -6,7 +6,6 @@
 #include "h/Engine/InputManager.h"
 #include "h/Rendering/PostProcessingPass.h"
 #include "h/Terrain/WorldManager.h"
-#include "h/Rendering/Shader.h"
 #include "h/Rendering/Camera.h"
 #include "h/Player/Player.h"
 #include "h/Rendering/UI/DebugUI.h"
@@ -29,7 +28,7 @@ private:
 	AppWindow app;
 	InputManager input;
 	WorldManager worldManager;
-	Shader blockShader, debugShader, userInterfaceShader;
+	Shader debugShader, userInterfaceShader;
 	Camera camera;
 	VertexPool vertexPool;
 	DebugUI debugUI;

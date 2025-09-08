@@ -1,16 +1,20 @@
-#include "h/Rendering/Renderer.h"
+#include "h/Rendering/TerrainRenderer.h"
 #include "h/Rendering/Utility/GLErrorCatcher.h"
 #include "h/Rendering/Utility/WindowConfig.h"
 
-Renderer::Renderer() : width(WindowDetails::WindowWidth), height(WindowDetails::WindowHeight), vertexPool(nullptr) {
+TerrainRenderer::TerrainRenderer() 
+    : width(WindowDetails::WindowWidth)
+    , height(WindowDetails::WindowHeight)
+    , gl_fill(true)
+    , window(nullptr)
+    , vertexPool(nullptr)
+    , lightPos(0.0f, 500.f, 0.0f)
+    , lightColor(0.9f, 1.f, 0.7f)
+{
  
 }
 
-Renderer::~Renderer() {
-    cleanup();
-}
-
-bool Renderer::initialize() {
+bool TerrainRenderer::initialize() {
     vertexArray.create();
 
     GLCall(glEnable(GL_DEPTH_TEST));
@@ -22,11 +26,14 @@ bool Renderer::initialize() {
 
     glfwWindowHint(GLFW_SAMPLES, 4);
     glEnable(GL_MULTISAMPLE);
+
+    terrainShader = Shader("src/res/shaders/Block.shader");
+    blockTextureArray = TextureArray({ "blocks/dirt.png", "blocks/grass_top.png", "blocks/grass_side.png", "blocks/stone.png", "blocks/bedrock.png", "blocks/sand.png", "blocks/water.png" }, false);
     
     return true;
 }
 
-void Renderer::setupVertexAttributes() {
+void TerrainRenderer::setupVertexAttributes() {
     vertexArray.Bind();
     if (!vertexPool) return;  // guard
     GLCall(glBindBuffer(GL_ARRAY_BUFFER, vertexPool->getVBO()));
@@ -50,7 +57,7 @@ void Renderer::setupVertexAttributes() {
     GLCall(glBindVertexArray(0));
 }
 
-void Renderer::toggleFillLine() {
+void TerrainRenderer::toggleFillLine() {
     gl_fill = !gl_fill;
     if (gl_fill) {
         GLCall(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
@@ -60,9 +67,23 @@ void Renderer::toggleFillLine() {
     }
 }
 
+void TerrainRenderer::updateShaderUniforms(glm::mat4& view, glm::mat4& projection, glm::vec3& viewPos) {
+    terrainShader.use();
 
-void Renderer::render() {
+    terrainShader.setUniform4fv("view", view);
+    terrainShader.setUniform4fv("projection", projection);
+    terrainShader.setVec3("viewPos",viewPos);
+    terrainShader.setVec3("lightPos", lightPos);
+    terrainShader.setVec3("lightColor", lightColor);
+}
+
+
+void TerrainRenderer::render() {
 	if (!vertexPool) return;
+
+    blockTextureArray.Bind();
+
+    terrainShader.use();
 
     std::lock_guard<std::mutex> lock(renderMtx);
     vertexArray.Bind(); // ensure VAO is bound
@@ -70,20 +91,26 @@ void Renderer::render() {
     vertexPool->renderIndirect();
 }
 
-void Renderer::updateRenderChunks(std::vector<std::pair<int, int>>& renderChunks) {
+void TerrainRenderer::updateRenderChunks(std::vector<std::pair<int, int>>& renderChunks) {
     chunksBeingRendered = renderChunks;
 }
 
-void Renderer::cleanup() {
-    vertexArray.destroy();
-}
-
-void Renderer::setWindowPointer(GLFWwindow* w) {
+void TerrainRenderer::setWindowPointer(GLFWwindow* w) {
     window = w;
     glfwGetWindowSize(window, &width, &height);
 }
 
-void Renderer::setVertexPoolPointer(VertexPool* vp) {
+void TerrainRenderer::setVertexPoolPointer(VertexPool* vp) {
 	vertexPool = vp;
     setupVertexAttributes();
+}
+
+void TerrainRenderer::cleanup() {
+    vertexArray.destroy();
+    terrainShader.deleteProgram();
+    blockTextureArray.~TextureArray();
+}
+
+TerrainRenderer::~TerrainRenderer() {
+    cleanup();
 }
