@@ -1,5 +1,6 @@
 # TODO  
 
+- Refactor Player (collision bugs, hacky code, etc)  
 - Add menu (escape key) with submenus/buttons  
 	- Settings  
 		- Video Settings  
@@ -7,6 +8,5 @@
 			- Render distance  
 			- Frame limit  
 	- Exit  
-- Refactor Player (collision bugs, hacky code, etc)  
 - Refactor WorldManager (move meshing functions elsewhere?)  
 - Stop meshing faces the player will never see

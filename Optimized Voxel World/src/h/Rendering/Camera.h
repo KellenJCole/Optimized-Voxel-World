@@ -34,7 +34,6 @@ public:
 	glm::mat4 getView() const { return view; }
 	std::vector<std::pair<int, int>> getVisibleChunks(int renderDistance);
 
-
 private:
 	bool isChunkVisible(const std::pair<int, int>& chunkCoord, const std::array<glm::vec4, 6>& planes) const;
 	std::array<glm::vec4, 6> calculateFrustumPlanes() const;

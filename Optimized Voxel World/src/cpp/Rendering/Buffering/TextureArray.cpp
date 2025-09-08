@@ -13,11 +13,10 @@ TextureArray::TextureArray(std::vector<std::string> imageNames, bool flipVertica
     unsigned char* firstImage =
         stbi_load(("src/res/textures/" + imageNames[0]).c_str(), &width, &height, &nrChannels, 0);
     if (!firstImage) {
-        std::cout << "Failed to load texture" << std::endl;
+        std::cerr << "Failed to load texture" << std::endl;
         return;
     }
     GLenum format = nrChannels == 4 ? GL_RGBA : GL_RGB;  // Simplified format determination
-    std::cout << nrChannels << "\n";
 
     GLCall(glGenTextures(1, &TextureID));
     GLCall(glBindTexture(GL_TEXTURE_2D_ARRAY, TextureID));
@@ -40,7 +39,7 @@ TextureArray::TextureArray(std::vector<std::string> imageNames, bool flipVertica
             GLCall(glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, i, width, height, 1, format, GL_UNSIGNED_BYTE, data));
             stbi_image_free(data);
         } else {
-            std::cout << "Failed to load texture at index " << i << std::endl;
+            std::cerr << "Failed to load texture at index " << i << std::endl;
         }
     }
 
