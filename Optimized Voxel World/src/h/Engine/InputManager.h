@@ -9,6 +9,7 @@ struct InputEvents {
 	bool togglePostFX = false;
 	bool toggleGravity = false;
 	bool toggleDebug = false;
+	bool toggleEntityBoxes = false;
 	int renderRadiusDelta = 0;
 
 	std::map<GLuint, bool> playerStates;

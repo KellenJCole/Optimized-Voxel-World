@@ -3,6 +3,7 @@
 Player::Player() :
 	camera(nullptr),
 	world(nullptr),
+	entityAABBRenderer(nullptr),
 	gravitationalAcceleration(70),
 	jumpAcceleration(-15),
 	horizontalAcceleration(5.f),
@@ -13,9 +14,11 @@ Player::Player() :
 	isJumping(false),
 	playerChunksReady(false),
 	gravityOn(true),
-	blockUpdateDelay(0.143) // 7 block updates per second allowed
+	blockUpdateDelay(0.125) // 8 block updates per second allowed
 {
 	lastChunkFractional = { {std::numeric_limits<int>::min(), false},  {std::numeric_limits<int>::min(), false}};
+	playerAABB.half = { 0.3f, 0.9f, 0.3f };
+	playerAABB.color = { 1.f, 0.f, 0.f };
 }
 
 void Player::update(float deltaTime) {
@@ -89,6 +92,14 @@ void Player::update(float deltaTime) {
 			lastChunkFractional = { {static_cast<int>(chunkXInt), chunkXFractionalBool}, {static_cast<int>(chunkZInt), chunkZFractionalBool} };
 		}
 	}
+	
+	updateEntityBox();
+}
+
+void Player::updateEntityBox() {
+	glm::vec3 camPos = camera->getCameraPos();
+	playerAABB.center = { camPos.x, camPos.y - playerAABB.half.y, camPos.z };
+	entityAABBRenderer->submit(playerAABB);
 }
 
 BlockID Player::getBlockAt(int worldX, int worldY, int worldZ) {
@@ -305,9 +316,6 @@ bool Player::checkAnyPlayerCollision(glm::vec3 blockPos) {
 	return false;
 }
 
-/*
-intbound() from Will, https://gamedev.stackexchange.com/users/4129/will, works well with negative coordinates
-*/
 
 void Player::setCamera(Camera* c) {
 	camera = c;
@@ -328,6 +336,8 @@ void Player::toggleGravity() {
 constexpr int signum(float x) {
 	return x > 0 ? 1 : x < 0 ? -1 : 0;
 }
+
+// intbound() from Will, https://gamedev.stackexchange.com/users/4129/will, works well with negative coordinates
 float intbound(float s, float ds) {
 	return (ds > 0 ? ceil(s) - s : s - floor(s)) / abs(ds);
 }

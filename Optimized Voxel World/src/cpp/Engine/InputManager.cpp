@@ -1,6 +1,6 @@
 #include "h/Engine/InputManager.h"
 
-static const GLuint ENGINE_KEYS[7] = { GLFW_KEY_F, GLFW_KEY_G, GLFW_KEY_I, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_ESCAPE, GLFW_KEY_P };
+static const GLuint ENGINE_KEYS[8] = { GLFW_KEY_F, GLFW_KEY_G, GLFW_KEY_I, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_ESCAPE, GLFW_KEY_P, GLFW_KEY_B };
 static const GLuint PLAYER_KEYS[7] = { GLFW_KEY_W, GLFW_KEY_A, GLFW_KEY_S, GLFW_KEY_D, GLFW_KEY_SPACE, GLFW_KEY_LEFT_SHIFT };
 
 InputManager::InputManager() 
@@ -38,6 +38,7 @@ InputEvents InputManager::poll(bool uiCursorActive) {
 	ev.togglePostFX = pressed(GLFW_KEY_P) && !uiCursorActive;
 	ev.toggleGravity = pressed(GLFW_KEY_G) && !uiCursorActive;
 	ev.toggleDebug = pressed(GLFW_KEY_I) && !uiCursorActive;
+	ev.toggleEntityBoxes = pressed(GLFW_KEY_B) && !uiCursorActive;
 	if (pressed(GLFW_KEY_UP) && !uiCursorActive) ev.renderRadiusDelta = +1;
 	if (pressed(GLFW_KEY_DOWN) && !uiCursorActive) ev.renderRadiusDelta = -1;
 

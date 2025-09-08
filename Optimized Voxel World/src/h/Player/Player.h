@@ -3,6 +3,7 @@
 #include "h/Terrain/WorldManager.h"
 #include "h/Rendering/Camera.h"
 #include "h/Terrain/Utility/ChunkUtils.h"
+#include "h/Rendering/EntityAABBRenderer.h"
 
 #include <map>
 #include <mutex>
@@ -14,6 +15,7 @@ public:
 	Player();
 	void setCamera(Camera* c);
 	void setWorld(WorldManager* w) { world = w; }
+	void setEntityAABBRenderer(EntityAABBRenderer* e) { entityAABBRenderer = e; }
 	void toggleGravity();
 	void update(float deltaTime);
 	void processKeyboardInput(std::map<GLuint, bool> keyStates, float deltaTime);
@@ -25,12 +27,16 @@ private:
 	bool checkAnyPlayerCollision(glm::vec3 blockPos);
 	void setPlayerChunks();
 	BlockID getBlockAt(int worldX, int worldY, int worldZ);
+	void updateEntityBox();
 
 	glm::vec3 raycast(glm::vec3 origin, glm::vec3 direction, float radius, CastType mode); // Returns in the first pair slot the block coordinates, in the second, the face info
 
 	// Object access pointers
 	Camera* camera;
 	WorldManager* world;
+	EntityAABBRenderer* entityAABBRenderer;
+
+	AABB playerAABB;
 
 	// Acceleration constants
 	float gravitationalAcceleration;
