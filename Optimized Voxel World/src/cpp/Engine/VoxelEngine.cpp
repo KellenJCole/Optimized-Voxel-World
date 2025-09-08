@@ -14,6 +14,7 @@ VoxelEngine::VoxelEngine()
     , renderDebug(false)
     , imGuiCursor(false)
     , usePostProcessing(true)
+    , drawEntityBoxes(false)
     , renderRadius(64)
     , vertexPool(1ULL * 1024 * 1024 * 1024) 
 {
@@ -58,6 +59,12 @@ bool VoxelEngine::initialize() {
         std::cerr << "VertexPool init failed.\n";
         return false;
     }
+
+    if (!entityAABBRenderer.initialize("src/res/shaders/AABB.shader")) {
+        std::cerr << "EntityAABBRenderer init failed.\n";
+        return false;
+    }
+    player.setEntityAABBRenderer(&entityAABBRenderer);
 
     if (!worldManager.initialize(&proceduralGenerator, &vertexPool))
         std::cerr << "World Manager init failed\n";
@@ -147,6 +154,7 @@ void VoxelEngine::processInput() {
 		if (ev.togglePostFX) usePostProcessing = !usePostProcessing;            // P
         if (ev.toggleGravity) player.toggleGravity();                           // G
         if (ev.toggleDebug) renderDebug = !renderDebug;                         // I
+        if (ev.toggleEntityBoxes) drawEntityBoxes = !drawEntityBoxes;           // B
 
         if (ev.renderRadiusDelta != 0) {                                        // Up/down arrow
             int newRadius = renderRadius + ev.renderRadiusDelta;
@@ -159,6 +167,7 @@ void VoxelEngine::processInput() {
 }
 
 void VoxelEngine::update() {
+    entityAABBRenderer.beginFrame(1);
     if (worldManager.getReadyForPlayerUpdate()) player.update(deltaTime);
 
     int cameraPosX = static_cast<int>(floor(camera.getCameraPos().x));
@@ -194,6 +203,8 @@ void VoxelEngine::render() {
 
     GLCall(glEnable(GL_DEPTH_TEST));
     worldManager.render();
+
+    if (drawEntityBoxes) entityAABBRenderer.draw((glm::mat4&)camera.getView(), (glm::mat4&)camera.getProjection(), 1.8f);
 
     if (usePostProcessing) {
         GLCall(glDisable(GL_DEPTH_TEST));

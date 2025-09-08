@@ -5,6 +5,7 @@
 #include "h/Engine/AppWindow.h"
 #include "h/Engine/InputManager.h"
 #include "h/Rendering/PostProcessingPass.h"
+#include "h/Rendering/EntityAABBRenderer.h"
 #include "h/Terrain/WorldManager.h"
 #include "h/Rendering/Camera.h"
 #include "h/Player/Player.h"
@@ -35,6 +36,7 @@ private:
 	UserInterface userInterface;;
 	ProcGenGui proceduralGenerationGui;
 	ProcGen proceduralGenerator;
+	EntityAABBRenderer entityAABBRenderer;
 
 	Player player;
 
@@ -54,4 +56,5 @@ private:
 
 	PostProcessingPass postFX;
 	bool usePostProcessing;
+	bool drawEntityBoxes;
 };

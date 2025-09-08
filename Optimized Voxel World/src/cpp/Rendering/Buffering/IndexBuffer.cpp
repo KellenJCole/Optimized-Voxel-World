@@ -2,21 +2,22 @@
 
 #include "h/Rendering/Utility/GLErrorCatcher.h"
 
-IndexBuffer::IndexBuffer() { valid = false; }
+IndexBuffer::IndexBuffer() 
+: valid(false)
+{}
 
 void IndexBuffer::create(const unsigned int* data, unsigned int count) {
     GLCall(glGenBuffers(1, &indexBuffer_id));
     Bind();
     GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(unsigned int), data, GL_DYNAMIC_DRAW));
-    Unbind();
     valid = true;
-    m_count = count;  // Set the count here
+    m_count = count;
 }
 
 void IndexBuffer::update(const unsigned int* data, unsigned int count) {
     Bind();
     GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(unsigned int), data, GL_DYNAMIC_DRAW));
-    m_count = count;  // Update the count
+    m_count = count;
 }
 
 void IndexBuffer::Bind() const { GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer_id)); }
