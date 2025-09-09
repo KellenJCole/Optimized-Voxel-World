@@ -7,9 +7,9 @@ struct InputEvents {
 	bool cursorToggle = false;
 	bool toggleWireframe = false;
 	bool togglePostFX = false;
-	bool toggleGravity = false;
 	bool toggleDebug = false;
 	bool toggleEntityBoxes = false;
+	bool toggleGravity = false;
 	int renderRadiusDelta = 0;
 
 	std::map<GLuint, bool> playerStates;

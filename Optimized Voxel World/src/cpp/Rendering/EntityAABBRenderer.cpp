@@ -61,7 +61,7 @@ void EntityAABBRenderer::draw(glm::mat4& view, glm::mat4& projection, float line
 	vao_.Bind();
 	vbInst_.update(instances_.data(), (unsigned)(instances_.size() * sizeof(AABB)));
 
-	GLCall(glLineWidth(lineWidth)); // often clamped to 1 on core profiles
+	GLCall(glLineWidth(lineWidth));
 	GLCall(glDrawElementsInstanced(GL_LINES,
 		ibo_.GetCount(),
 		GL_UNSIGNED_INT,

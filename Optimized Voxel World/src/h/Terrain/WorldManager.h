@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <set>
 #include <future>
-#include <mutex>
+#include <shared_mutex>
 
 #include "h/Terrain/Chunk.h"
 #include "h/Terrain/ChunkLoader.h"
@@ -30,14 +30,13 @@ public:
     BlockID getBlockAtGlobal(int worldX, int worldY, int worldZ, BlockFace face, int sourceLod);
     void breakBlock(int worldX, int worldY, int worldZ);
     void placeBlock(int worldX, int worldY, int worldZ, BlockID blockToPlace);
-    std::vector<BlockID> getChunkVector(ChunkCoordPair key);
 
     void setWindowPointer(GLFWwindow* window) { renderer.setWindowPointer(window); }
     void passCameraPointer(Camera* cam) { camera = cam; }
     bool getReadyForPlayerUpdate() { return readyForPlayerUpdate; }
     void switchRenderMethod() { renderer.toggleFillLine(); }
 
-    std::unordered_map<ChunkCoordPair, std::unique_ptr<Chunk>, PairHash> worldMap;
+    std::shared_ptr<const std::vector<BlockID>> tryGetChunkSnapshot(ChunkCoordPair key);
 
 private:
     void addVerticesForQuad(std::vector<Vertex>& verts, std::vector<unsigned int>& inds, MeshUtils::Quad quad, ChunkCoordPair chunkCoords,
@@ -58,20 +57,29 @@ private:
     ProcGen* proceduralGenerator;
 
     std::unordered_set<ChunkCoordPair, PairHash> chunkKeys;
-    std::unordered_set<ChunkCoordPair, PairHash> unmeshedKeys;
+    std::vector<ChunkCoordPair> unmeshedKeysOrder;
+    std::unordered_set<ChunkCoordPair, PairHash> unmeshedKeysSet;
+
+    inline void insertUnmeshed(const ChunkCoordPair& key) {
+        if (unmeshedKeysSet.insert(key).second) {
+            unmeshedKeysOrder.push_back(key);
+        }
+    }
+
     std::vector<ChunkCoordPair> currentRenderChunks;
 
     Camera* camera;
 
     // MULTITHREAD
     std::future<void> loadFuture;
-    std::recursive_mutex chunkUpdateMtx;
-    std::recursive_mutex worldMapMtx;
-    std::recursive_mutex renderBuffersMtx;
+    std::shared_mutex worldMapMtx;
+    std::mutex renderBuffersMtx;
     std::atomic<bool> updatedRenderChunks;
     std::atomic<bool> stopAsync;
 
     bool readyForPlayerUpdate;
     double lastFrustumCheck;
     int renderRadius;
+
+    std::unordered_map<ChunkCoordPair, std::unique_ptr<Chunk>, PairHash> worldMap;
 };

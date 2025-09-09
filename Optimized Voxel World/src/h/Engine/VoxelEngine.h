@@ -4,6 +4,7 @@
 
 #include "h/Engine/AppWindow.h"
 #include "h/Engine/InputManager.h"
+#include "h/Physics/EntityTerrainCollision.h"
 #include "h/Rendering/PostProcessingPass.h"
 #include "h/Rendering/EntityAABBRenderer.h"
 #include "h/Terrain/WorldManager.h"
@@ -37,6 +38,7 @@ private:
 	ProcGenGui proceduralGenerationGui;
 	ProcGen proceduralGenerator;
 	EntityAABBRenderer entityAABBRenderer;
+	EntityTerrainCollision entityTerrainCollision;
 
 	Player player;
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "h/external/glm/vec3.hpp"
-#include "h/AABB.h"
+#include "h/Utility/AABB.h"
 #include "h/Rendering/Shader.h"
 #include "h/Rendering/Buffering/VertexArray.h"
 #include "h/Rendering/Buffering/VertexBuffer.h"

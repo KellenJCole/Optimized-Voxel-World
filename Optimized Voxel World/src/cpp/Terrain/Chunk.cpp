@@ -21,6 +21,7 @@ Chunk::Chunk()
 void Chunk::generateChunk(ProcGen& proceduralGenerator) {
     chunkLodMap[detailLevel].resize(ChunkUtils::getChunkLength(detailLevel), BlockID::AIR);
     highestOccupiedIndex = proceduralGenerator.generateChunk(chunkLodMap[detailLevel], std::make_pair(chunkX, chunkZ), detailLevel);
+    publishSnapshot();
 }
 
 #define CHECK_PERFORMED_MASK(face) (1 << (face * 2))
@@ -202,8 +203,9 @@ void Chunk::greedyMesh() {
 
 bool Chunk::breakBlock(int localX, int localY, int localZ) {
     int flatIndex = ChunkUtils::flattenChunkCoords(localX, localY, localZ, detailLevel);
-
     chunkLodMap[detailLevel][flatIndex] = BlockID::AIR;
+
+    publishSnapshot();
     return true;
 }
 
@@ -212,6 +214,7 @@ bool Chunk::placeBlock(int localX, int localY, int localZ, BlockID blockToPlace)
     if (flatIndex > highestOccupiedIndex) highestOccupiedIndex = flatIndex;
     chunkLodMap[detailLevel][flatIndex] = blockToPlace;
 
+    publishSnapshot();
     return true;
 }
 
@@ -228,4 +231,13 @@ glm::ivec3 Chunk::expandChunkCoords(int flatIndex) const {
 void Chunk::unload() {
     visByFaceType.clear();
     greedyAlgorithm.unload();
+}
+
+std::shared_ptr<const std::vector<BlockID>> Chunk::getSnapshot() const {
+    return snapshot_.load(std::memory_order_acquire);
+}
+
+void Chunk::publishSnapshot() {
+    auto sp = std::make_shared<std::vector<BlockID>>(chunkLodMap[detailLevel]);
+    snapshot_.store(sp, std::memory_order_release);
 }
