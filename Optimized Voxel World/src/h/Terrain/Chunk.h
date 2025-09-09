@@ -51,6 +51,10 @@ public:
 	// Clear VisByFaceType (might need to do other things, this should be thought about harder)
 	void unload();
 
+	// RCU snapshot : immutable view
+	std::shared_ptr<const std::vector<BlockID>> getSnapshot() const;
+	void publishSnapshot(); // current LOD vector
+
 private:
 	glm::ivec3 expandChunkCoords(int flatIndex) const;
 
@@ -65,4 +69,6 @@ private:
 	int resolutionXZ, resolutionY;
 	int detailLevel;
 	int highestOccupiedIndex;
+
+	std::atomic<std::shared_ptr<const std::vector<BlockID>>> snapshot_{ nullptr };
 };

@@ -8,14 +8,14 @@
 
 VoxelEngine::VoxelEngine() 
     : fps(std::numeric_limits<int>::min())
-    , deltaTime(0.0f)
-    , lastFrame(0.0f)
+    , deltaTime(0.f)
+    , lastFrame(0.f)
     , fpsUpdateTime(0.1f)
     , renderDebug(false)
     , imGuiCursor(false)
     , usePostProcessing(true)
     , drawEntityBoxes(false)
-    , renderRadius(64)
+    , renderRadius(48)
     , vertexPool(1ULL * 1024 * 1024 * 1024) 
 {
 	currChunkX = ChunkUtils::worldToChunkCoord(static_cast<int>(floor(camera.getCameraPos().x)));
@@ -60,15 +60,19 @@ bool VoxelEngine::initialize() {
         return false;
     }
 
+    if (!worldManager.initialize(&proceduralGenerator, &vertexPool))
+        std::cerr << "World Manager init failed\n";
+    worldManager.setWindowPointer(win);
+
     if (!entityAABBRenderer.initialize("src/res/shaders/AABB.shader")) {
         std::cerr << "EntityAABBRenderer init failed.\n";
         return false;
     }
-    player.setEntityAABBRenderer(&entityAABBRenderer);
 
-    if (!worldManager.initialize(&proceduralGenerator, &vertexPool))
-        std::cerr << "World Manager init failed\n";
-    worldManager.setWindowPointer(win);
+    entityTerrainCollision.setWorldPtr(&worldManager);
+
+    player.setEntityAABBRenderer(&entityAABBRenderer);
+    player.setEntityTerrainCollisionPtr(&entityTerrainCollision);
 
     app.setCursorDisabled(true);
 
@@ -143,16 +147,14 @@ void VoxelEngine::processInput() {
         if (imGuiCursor) {
             auto cleared = ev.playerStates;
             for (auto& p : cleared) p.second = false;
-            player.processKeyboardInput(cleared, deltaTime);
         }
     }
 
-    if (!imGuiCursor) player.processKeyboardInput(ev.playerStates, deltaTime);
+    player.processKeyboardInput(ev, deltaTime);
 
     if (!imGuiCursor) {
         if (ev.toggleWireframe) worldManager.switchRenderMethod();              // F
 		if (ev.togglePostFX) usePostProcessing = !usePostProcessing;            // P
-        if (ev.toggleGravity) player.toggleGravity();                           // G
         if (ev.toggleDebug) renderDebug = !renderDebug;                         // I
         if (ev.toggleEntityBoxes) drawEntityBoxes = !drawEntityBoxes;           // B
 
@@ -221,7 +223,7 @@ void VoxelEngine::render() {
         std::ostringstream stream;
         stream << std::fixed << std::setprecision(2);
         stream << fps * (1.f / fpsUpdateTime) << "\n";
-        stream << cameraPos.x << " " << (cameraPos.y - 1.8) << " " << cameraPos.z << "\n";
+        stream << cameraPos.x << " " << (cameraPos.y - 1.65) << " " << cameraPos.z << "\n";
 
         debugUI.renderText(debugShader, stream.str(), 10.0f, 1020.0f, 0.8f, glm::vec3(0.f, 0.f, 0.f));
     }

@@ -72,12 +72,12 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 
 			readyForPlayerUpdate = false;
 			{
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+				std::unique_lock<std::shared_mutex> worldLock(worldMapMtx);
 				worldMap[key] = std::move(newChunk);
 			}
 			readyForPlayerUpdate = true;
 			chunkKeys.insert(key);
-			unmeshedKeys.insert(key);
+			insertUnmeshed(key);
 		}
 	}
 
@@ -85,29 +85,33 @@ void WorldManager::loadChunksAsync(const std::vector<std::pair<int, int>>& loadC
 		if (stopAsync.load()) break;
 
 		if (chunkKeys.find(key) != chunkKeys.end()) {
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+			std::unique_lock<std::shared_mutex> worldLock(worldMapMtx);
 			int lod = calculateLevelOfDetail(key);
 			if (worldMap[key]->getCurrentLod() != lod) {
 				worldMap[key]->convertLOD(lod);
 				worldMap[key]->generateChunk(*proceduralGenerator);
-				unmeshedKeys.insert(key);
+				insertUnmeshed(key);
 
-				unmeshedKeys.insert({ key.first - 1, key.second });
-				unmeshedKeys.insert({ key.first + 1, key.second });
-				unmeshedKeys.insert({ key.first, key.second - 1 });
-				unmeshedKeys.insert({ key.first, key.second + 1 });
+				insertUnmeshed({ key.first - 1, key.second });
+				insertUnmeshed({ key.first + 1, key.second });
+				insertUnmeshed({ key.first, key.second - 1 });
+				insertUnmeshed({ key.first, key.second + 1 });
 			}
 		}
 	}
 
 	std::unordered_set<ChunkCoordPair, PairHash> meshedKeys;
-	for (const auto& key : unmeshedKeys) {
+	for (const auto& key : unmeshedKeysOrder) {
 		if (stopAsync.load()) break;
+		if (unmeshedKeysSet.find(key) == unmeshedKeysSet.end()) continue;
 		genChunkMesh(key);
 		meshedKeys.insert(key);
 	}
 
-	for (const auto& key : meshedKeys) unmeshedKeys.erase(key);
+	for (const auto& key : meshedKeys) unmeshedKeysSet.erase(key);
+
+	if (unmeshedKeysSet.empty())
+		unmeshedKeysOrder.clear();
 }
 
 int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
@@ -130,38 +134,41 @@ int WorldManager::calculateLevelOfDetail(ChunkCoordPair ccp) {
 }
 
 void WorldManager::unloadChunks(const std::vector<std::pair<int, int>>& loadChunks, bool all) { // all - unload ALL for regeneration or unload those out of render distance
-	std::unordered_set<std::pair<int, int>, PairHash> loadedChunksSet(loadChunks.begin(), loadChunks.end());
+	const std::unordered_set<std::pair<int, int>, PairHash> keep(loadChunks.begin(), loadChunks.end());
 
-	// Unload chunks
-	if (!all) {
-		std::set<ChunkCoordPair> keysToDelete;
-
-		std::lock(worldMapMtx, renderBuffersMtx);
-		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx, std::adopt_lock);
-		std::lock_guard<std::recursive_mutex> renderLock(renderBuffersMtx, std::adopt_lock);
-
-		for (const auto& chunkKey : worldMap) {
-			if (loadedChunksSet.find(chunkKey.first) == loadedChunksSet.end()) {
-				keysToDelete.insert(chunkKey.first);
+	std::vector<ChunkCoordPair> toDelete;
+	{
+		std::shared_lock<std::shared_mutex> mapRead(worldMapMtx);
+		toDelete.reserve(worldMap.size());
+		if (!all) {
+			for (const auto& kv : worldMap) {
+				if (!keep.count(kv.first)) toDelete.push_back(kv.first);
 			}
 		}
-
-		for (const auto& key : keysToDelete) {
-			chunkKeys.erase(key);
-			vertexPool->freeBucket(key);
-			worldMap.erase(key);
+		else {
+			for (const auto& kv : worldMap) toDelete.push_back(kv.first);
 		}
 	}
-	else {
-		std::lock(worldMapMtx, renderBuffersMtx);
-		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx, std::adopt_lock);
-		std::lock_guard<std::recursive_mutex> renderLock(renderBuffersMtx, std::adopt_lock);
 
-		for (const auto& key : worldMap) {
-			chunkKeys.erase(key.first);
-			vertexPool->freeBucket(key.first);
+	{
+		std::lock_guard<std::mutex> renderLock(renderBuffersMtx);
+		for (const auto& key : toDelete) {
+			vertexPool->freeBucket(key);
 		}
-		worldMap.clear();
+	}
+
+	{
+		std::unique_lock<std::shared_mutex> mapWrite(worldMapMtx);
+		if (all) {
+			for (const auto& kv : worldMap) chunkKeys.erase(kv.first);
+			worldMap.clear();
+		}
+		else {
+			for (const auto& key : toDelete) {
+				chunkKeys.erase(key);
+				worldMap.erase(key);
+			}
+		}
 	}
 }
 
@@ -171,7 +178,7 @@ BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ) {
 	std::pair<int, int> chunkKey = { chunkX, chunkZ };
 
 	if (chunkKeys.find(chunkKey) != chunkKeys.end()) {
-		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+		std::shared_lock<std::shared_mutex> worldLock(worldMapMtx);
 		return worldMap[chunkKey]->getBlockAt(worldX, worldY, worldZ);
 	}
 	else return BlockID::NONE;
@@ -183,7 +190,7 @@ BlockID WorldManager::getBlockAtGlobal(int worldX, int worldY, int worldZ, Block
 	std::pair<int, int> chunkKey = { chunkX, chunkZ };
 
 	if (chunkKeys.find(chunkKey) != chunkKeys.end()) {
-		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+		std::shared_lock<std::shared_mutex> worldLock(worldMapMtx);
 		return worldMap[chunkKey]->getBlockAt(worldX, worldY, worldZ, face, sourceLod);
 	}
 	else return BlockID::NONE;
@@ -200,27 +207,22 @@ void WorldManager::breakBlock(int worldX, int worldY, int worldZ) {
 			int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
 
 			{
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+				std::unique_lock<std::shared_mutex> worldLock(worldMapMtx);
 				worldMap[key]->breakBlock(localX, worldY, localZ);
 			}
 
 			genChunkMesh(key);
 
-			// Update neighboring chunks if necessary
 			if (localX == 0) {
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 				genChunkMesh({ key.first - 1, key.second });
 			}
 			else if (localX == ChunkUtils::WIDTH - 1) {
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 				genChunkMesh({ key.first + 1, key.second });
 			}
 			if (localZ == 0) {
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 				genChunkMesh({ key.first, key.second - 1 });
 			}
 			else if (localZ == ChunkUtils::DEPTH - 1) {
-				std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 				genChunkMesh({ key.first, key.second + 1 });
 			}
 		}
@@ -237,47 +239,48 @@ void WorldManager::placeBlock(int worldX, int worldY, int worldZ, BlockID blockT
 		int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
 
 		{
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+			std::unique_lock<std::shared_mutex> worldLock(worldMapMtx);
 			worldMap[key]->placeBlock(localX, worldY, localZ, blockToPlace);
 		}
 
 		genChunkMesh(key);
 
 		if (localX == 0) {
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 			genChunkMesh({ key.first - 1, key.second });
 		}
 		else if (localX == ChunkUtils::WIDTH - 1) {
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 			genChunkMesh({ key.first + 1, key.second });
 		}
 
 		if (localZ == 0) {
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 			genChunkMesh({ key.first, key.second - 1 });
 		}
 		else if (localZ == ChunkUtils::DEPTH - 1) {
-			std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
 			genChunkMesh({ key.first, key.second + 1 });
 		}
 	}
 }
 
 void WorldManager::genChunkMesh(ChunkCoordPair key) {
-	// Check/set chunk's mesh states
-	int lod;
-	Chunk* chunk;
+	Chunk* chunk = nullptr;
+	int lod = -1;
+
 	{
-		std::lock_guard<std::recursive_mutex> lock(worldMapMtx);
-		if (worldMap.find(key) == worldMap.end()) return; // this happens sometimes... How? I'll find out another time...
+		std::shared_lock<std::shared_mutex> worldLock(worldMapMtx);
+		auto it = worldMap.find(key);
+		if (it == worldMap.end()) return;	// this happens sometimes... How? I'll find out another time...
 
 		chunk = worldMap[key].get();
-
 		lod = chunk->getCurrentLod();
-
-		chunk->startMeshing();
-		chunk->greedyMesh();
 	}
+
+	{
+		std::unique_lock<std::shared_mutex> worldLock(worldMapMtx);
+		auto it = worldMap.find(key);
+	}
+
+	chunk->startMeshing();
+	chunk->greedyMesh();
 
 	// Release mesh from GPU if it exists
 	vertexPool->freeBucket(key);
@@ -285,7 +288,7 @@ void WorldManager::genChunkMesh(ChunkCoordPair key) {
 	MeshUtils::FaceMeshGraphs greedyMeshes;
 
 	{
-		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+		std::shared_lock<std::shared_mutex> worldLock(worldMapMtx);
 		
 		for (int f = 0; f < toInt(BlockFace::Count); ++f) {
 			greedyMeshes[f] = worldMap[key]->getMeshGraph(static_cast<BlockFace>(f));
@@ -311,7 +314,7 @@ void WorldManager::genChunkMesh(ChunkCoordPair key) {
 	vertexPool->updateIndices(key, inds.data(), inds.size());
 
 	{
-		std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
+		std::unique_lock<std::shared_mutex> worldLock(worldMapMtx);
 		worldMap[key]->unload();
 	}
 }
@@ -464,15 +467,10 @@ void WorldManager::render() {
 	renderer.render();
 }
 
-std::vector<BlockID> WorldManager::getChunkVector(ChunkCoordPair key) {
-	std::vector<BlockID> empty;
-	empty.resize(1);
-
-	std::lock_guard<std::recursive_mutex> worldLock(worldMapMtx);
-	if (worldMap.find(key) != worldMap.end()) {
-		std::vector<BlockID> result = worldMap[key]->getCurrChunkVec();
-		return result;
-	}
-	else
-		return empty;
+std::shared_ptr<const std::vector<BlockID>> WorldManager::tryGetChunkSnapshot(ChunkCoordPair key) {
+	std::shared_lock<std::shared_mutex> lock(worldMapMtx, std::try_to_lock);
+	if (!lock.owns_lock()) return {};
+	auto it = worldMap.find(key);
+	if (it == worldMap.end()) return {};
+	return it->second->getSnapshot();
 }

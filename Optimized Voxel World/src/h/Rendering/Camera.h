@@ -19,12 +19,9 @@ public:
 	void update();
 
 	// Process user input
-	void processKeyboardInput(std::map<unsigned int, bool> keyStates, float deltaTime);
 	void processMouseMovement(double xPos, double yPos);
 
 	void setCameraPos(glm::vec3 pos);
-
-	inline void toggleFlying(bool fly) { flying = fly; }
 
 	// Getters for camera properties
 	glm::vec3 getCameraPos() const { return cameraPos; }
@@ -50,7 +47,6 @@ private:
 	float pitch;
 	float lastX, lastY;
 	bool firstMouse;
-	bool flying;
 
 	// Internal helper function
 	void updateCameraVectors();

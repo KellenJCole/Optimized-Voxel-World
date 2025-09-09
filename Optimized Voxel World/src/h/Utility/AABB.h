@@ -6,4 +6,5 @@ struct AABB {
 	glm::vec3 center;
 	glm::vec3 half;
 	glm::vec3 color;
+	glm::vec3 velocity;
 };

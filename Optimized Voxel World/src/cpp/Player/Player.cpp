@@ -1,288 +1,162 @@
 #include "h/Player/Player.h"
 
+#include <chrono>
+#include <iostream>
+
 Player::Player() :
 	camera(nullptr),
 	world(nullptr),
 	entityAABBRenderer(nullptr),
-	gravitationalAcceleration(70),
-	jumpAcceleration(-15),
-	horizontalAcceleration(5.f),
+	entityTerrainCollision(nullptr),
+	gravitationalAcceleration(70.f),
+	jumpAcceleration(15.f),
+	horizontalAcceleration(6.f),
 	xVelocity(0),
 	yVelocity(0),
 	zVelocity(0),
 	currentGravitationalCollision(false),
 	isJumping(false),
-	playerChunksReady(false),
-	gravityOn(true),
-	blockUpdateDelay(0.125) // 8 block updates per second allowed
+	flightOn(false),
+	lastBlockActionTime(0.0),
+	blockActionCooldown(0.1),
+	lastGravityToggleTime(0.0),
+	gravityToggleCooldown(0.2)
 {
-	lastChunkFractional = { {std::numeric_limits<int>::min(), false},  {std::numeric_limits<int>::min(), false}};
-	playerAABB.half = { 0.3f, 0.9f, 0.3f };
-	playerAABB.color = { 1.f, 0.f, 0.f };
+	playerAABB.half = { 0.3f, 0.875f, 0.3f };
+	playerAABB.color = { 1.f, 1.f, 1.f };
+	playerAABB.velocity = { 0.f, 0.f, 0.f };
 }
 
 void Player::update(float deltaTime) {
+	if (!flightOn)
+		yVelocity -= gravitationalAcceleration * deltaTime;
+
 	glm::vec3 currPos = camera->getCameraPos();
 
-	float chunkXPrecise = currPos.x > 0 ? currPos.x / 64 : (currPos.x - 63) / 64;
-	float chunkZPrecise = currPos.z > 0 ? currPos.z / 64 : (currPos.z - 63) / 64;
-	double chunkXInt, chunkZInt;
-	float chunkXFractional = modf(chunkXPrecise, &chunkXInt);
-	float chunkZFractional = modf(chunkZPrecise, &chunkZInt);
+	// Keep the eye slightly below the top of the collider
+	const float headroom = 0.10f;
+	const float eyeOffset = playerAABB.half.y - headroom;
 
-	bool chunkXFractionalBool = chunkXFractional > 0 ? (chunkXFractional > 0.5 ? true : false) : (abs(chunkXFractional) > 0.5 ? false : true);
-	bool chunkZFractionalBool = chunkZFractional > 0 ? (chunkZFractional > 0.5 ? true : false) : (abs(chunkZFractional) > 0.5 ? false : true);
-
-	double now = glfwGetTime();
-	if (!playerChunksReady) setPlayerChunks();
-
-	if (gravityOn) {
-		bool differentChunkEntered = (chunkXInt != lastChunkFractional.first.first || chunkXFractionalBool != lastChunkFractional.first.second || chunkZInt != lastChunkFractional.second.first || chunkZFractionalBool != lastChunkFractional.second.second);
-		if (differentChunkEntered || !playerChunksReady) {
-			playerChunksReady = false;
-			if (!playerChunksReady)
-				setPlayerChunks();
-		}
-
-		if (playerChunksReady) {
-			glm::vec3 origPos = currPos;
-
-			// First move vertically
-			currPos.y -= yVelocity * deltaTime;
-			yVelocity += gravitationalAcceleration * deltaTime;
-
-			if (isJumping) {
-				yVelocity -= jumpAcceleration * deltaTime;
-			}
-
-			camera->setCameraPos(currPos);
-
-			bool horizontal = checkForHorizontalCollision();
-			bool gravitational = checkForGravitationalCollision();
-			bool head = checkHeadCollision();
-
-			if (horizontal) camera->setCameraPos(origPos);
-			if (gravitational || head) {
-				camera->setCameraPos(origPos);
-				yVelocity = 0;
-				isJumping = false;
-			}
-
-			currPos = camera->getCameraPos();
-			origPos = currPos;
-
-			// handle horizontal collisions
-			currPos.x += xVelocity * deltaTime;
-			currPos.z += zVelocity * deltaTime;
-
-			camera->setCameraPos(currPos);
-
-			bool horizontalCollision = checkForHorizontalCollision();
-			if (horizontalCollision) { // code designed to allow you to slide along walls even if you are colliding
-				camera->setCameraPos({ origPos.x, currPos.y, currPos.z });
-				horizontalCollision = checkForHorizontalCollision();
-				if (horizontalCollision) {
-					camera->setCameraPos({ currPos.x, currPos.y, origPos.z });
-					horizontalCollision = checkForHorizontalCollision();
-					if (horizontalCollision) {
-						camera->setCameraPos({ origPos.x, currPos.y, origPos.z });
-					}
-				}
-			}
-			lastChunkFractional = { {static_cast<int>(chunkXInt), chunkXFractionalBool}, {static_cast<int>(chunkZInt), chunkZFractionalBool} };
-		}
-	}
-	
+	playerAABB.center = { currPos.x, currPos.y - eyeOffset, currPos.z };
 	updateEntityBox();
-}
+	playerAABB.velocity = { xVelocity, yVelocity, zVelocity };
 
-void Player::updateEntityBox() {
-	glm::vec3 camPos = camera->getCameraPos();
-	playerAABB.center = { camPos.x, camPos.y - playerAABB.half.y, camPos.z };
-	entityAABBRenderer->submit(playerAABB);
-}
+	if (entityTerrainCollision) {
+		auto res = entityTerrainCollision->sweepResolve(playerAABB, deltaTime);
 
-BlockID Player::getBlockAt(int worldX, int worldY, int worldZ) {
-	if (worldY > 255) return BlockID::AIR;
-	if (worldY == 0) return BlockID::BEDROCK;
+		camera->setCameraPos({ res.newCenter.x, res.newCenter.y + eyeOffset, res.newCenter.z });
 
-	int chunkX = ChunkUtils::worldToChunkCoord(worldX);
-	int chunkZ = ChunkUtils::worldToChunkCoord(worldZ);
-	std::pair<int, int> key = { chunkX, chunkZ };
+		xVelocity = res.newVelocity.x;
+		yVelocity = res.newVelocity.y;
+		zVelocity = res.newVelocity.z;
 
-	int accessX = std::numeric_limits<int>::min(), accessZ = std::numeric_limits<int>::min();
-	for (int x = 0; x < 2; x++) {
-		for (int z = 0; z < 2; z++) {
-			if (playerChunks[x][z].first == key) {
-				accessX = x;
-				accessZ = z;
+		currentGravitationalCollision = (res.contact.hitY && res.contact.normal.y > 0.f);
+		if (!flightOn) {
+			if (currentGravitationalCollision) {
+				isJumping = false;
+				if (yVelocity < 0.f) yVelocity = 0.f;
 			}
 		}
-	}
-	
-	int localX = ChunkUtils::convertWorldCoordToLocalCoord(worldX);
-	int localZ = ChunkUtils::convertWorldCoordToLocalCoord(worldZ);
-
-	int flatIndex = ChunkUtils::flattenChunkCoords(localX, worldY, localZ, 0);
-
-	return playerChunks[accessX][accessZ].second[flatIndex];
-}
-
-void Player::setPlayerChunks() {
-	glm::vec3 currPos = camera->getCameraPos();
-	float chunkXPrecise = currPos.x > 0 ? currPos.x / 64 : (currPos.x - 63) / 64;
-	float chunkZPrecise = currPos.z > 0 ? currPos.z / 64 : (currPos.z - 63) / 64;
-	double chunkXInt, chunkZInt;
-	float chunkXFractional = modf(chunkXPrecise, &chunkXInt);
-	float chunkZFractional = modf(chunkZPrecise, &chunkZInt);
-
-	int incrementX = chunkXFractional > 0 ? (chunkXFractional > 0.5 ? 1 : -1) : (abs(chunkXFractional) > 0.5 ? -1 : 1);
-	int incrementZ = chunkZFractional > 0 ? (chunkZFractional > 0.5 ? 1 : -1) : (abs(chunkZFractional) > 0.5 ? -1 : 1);
-
-	playerChunks[0][0].first = { static_cast<int>(chunkXInt), static_cast<int>(chunkZInt) };
-	playerChunks[0][1].first = { static_cast<int>(chunkXInt + incrementX), static_cast<int>(chunkZInt) };
-	playerChunks[1][0].first = { static_cast<int>(chunkXInt), static_cast<int>(chunkZInt + incrementZ) };
-	playerChunks[1][1].first = { static_cast<int>(chunkXInt + incrementX), static_cast<int>(chunkZInt + incrementZ) };
-
-	playerChunksReady = true;
-	for (int x = 0; x < 2; x++) {
-		for (int z = 0; z < 2; z++) {
-			playerChunks[x][z].second = world->getChunkVector(playerChunks[x][z].first);
-			if (playerChunks[x][z].second.size() == 1) {
-				playerChunksReady = false;
-			}
+		else {
+			currentGravitationalCollision = false;
+			isJumping = false;
 		}
 	}
 }
 
-bool Player::checkForGravitationalCollision() {
-	glm::vec3 cameraPos = camera->getCameraPos();
-	cameraPos.y = (float)floor(cameraPos.y - 1.8);
-	int minCheckX = floor(cameraPos.x - 0.3);
-	int minCheckZ = floor(cameraPos.z - 0.3);
-	int maxCheckX = floor(cameraPos.x + 0.3);
-	int maxCheckZ = floor(cameraPos.z + 0.3);
-
-	for (int x = minCheckX; x <= maxCheckX; x++) {
-		for (int z = minCheckZ; z <= maxCheckZ; z++) {
-			BlockID block = getBlockAt(x, cameraPos.y, z);
-			if (block != BlockID::AIR) {
-				currentGravitationalCollision = true;
-				return true;
-			}
-		}
-	}
-
-	currentGravitationalCollision = false;
-	return false;
-}
-
-bool Player::checkHeadCollision() {
-	glm::vec3 cameraPos = camera->getCameraPos();
-	BlockID block = getBlockAt(floor(cameraPos.x), floor(cameraPos.y + 0.1), floor(cameraPos.z));
-
-	if (block != BlockID::AIR) return true;
-	return false;
-}
-
-bool Player::checkForHorizontalCollision() {
-	glm::vec3 camPos = camera->getCameraPos();
-	glm::vec3 playerAABBmin(camPos.x - 0.3, camPos.y - 1.8, camPos.z - 0.3);
-	glm::vec3 playerAABBmax(camPos.x + 0.3, camPos.y, camPos.z + 0.3);
-
-	int xMin = floor(playerAABBmin.x);
-	int xMax = floor(playerAABBmax.x);
-	int zMin = floor(playerAABBmin.z);
-	int zMax = floor(playerAABBmax.z);
-	int yMin = floor(playerAABBmin.y);
-	int yMax = floor(playerAABBmax.y);
-
-	for (int x = xMin; x <= xMax; x++) {
-		for (int y = yMin; y <= yMax; y++) {
-			if (getBlockAt(x, y, std::floor(camPos.z)) != BlockID::AIR) return true;
-		}
-	}
-
-	for (int z = zMin; z <= zMax; z++) {
-		for (int y = yMin; y <= yMax; y++) {
-			if (getBlockAt(std::floor(camPos.x), y, z) != BlockID::AIR) return true;
-		}
-	}
-
-	for (int x = xMin; x <= xMax; x++) {
-		for (int z = zMin; z <= zMax; z++) {
-			for (int y = yMin; y <= yMax; y++) {
-				if (getBlockAt(x, y, z) != BlockID::AIR) return true;
-			}
-		}
-	}
-
-	return false;
-}
-
-void Player::processKeyboardInput(std::map<GLuint, bool> keyStates, float deltaTime) {
+void Player::processKeyboardInput(const InputEvents& ev, float deltaTime) {
 	double now = glfwGetTime();
-	if (playerChunksReady) {
-		if (keyStates[GLFW_MOUSE_BUTTON_LEFT]) { // Break block
-			if (now - blockUpdateDelay > 0.143) {
-				blockUpdateDelay = now;
-				glm::vec3 result = raycast(camera->getCameraPos(), camera->getCameraFront(), 5, CastType::Break);
-				if (result.x != std::numeric_limits<float>::min()) {
-					world->breakBlock(result.x, result.y, result.z);
-					playerChunksReady = false;
-					setPlayerChunks();
-				}
-			}
+
+	if (ev.toggleGravity) {
+		lastGravityToggleTime = now;
+
+		flightOn = !flightOn;
+		if (!flightOn) {
+			horizontalAcceleration = 6.f;
+			gravitationalAcceleration = 70.f;
+			jumpAcceleration = 15.f;
 		}
-		if (keyStates[GLFW_MOUSE_BUTTON_RIGHT]) { // Place block
-			if (now - blockUpdateDelay > 0.143) {
-				blockUpdateDelay = now;
-				glm::vec3 result = raycast(camera->getCameraPos(), camera->getCameraFront(), 5, CastType::Place);
-				if (result.x != std::numeric_limits<float>::min()) {
-					if (!checkAnyPlayerCollision(result)) {
-						world->placeBlock(result.x, result.y, result.z, BlockID::DIRT);
-						playerChunksReady = false;
-						setPlayerChunks();
-					}
-				}
-			}
+		else {
+			horizontalAcceleration = 300.f;
+			gravitationalAcceleration = 0.f;
+			jumpAcceleration = 0.f;
 		}
+
+		yVelocity = 0.f;
+		isJumping = false;
 	}
 
-	if (gravityOn) {
+	auto keyStates = ev.playerStates;
+
+	glm::vec3 moveDir(0.0f);
+	glm::vec3 forwardDir = glm::normalize(glm::vec3(camera->getCameraFront().x, 0.0, camera->getCameraFront().z));
+	glm::vec3 rightDir = glm::normalize(glm::cross(camera->getCameraFront(), camera->getCameraUp()));
+
+	if (keyStates[GLFW_KEY_W]) moveDir += forwardDir;
+	if (keyStates[GLFW_KEY_S]) moveDir -= forwardDir;
+	if (keyStates[GLFW_KEY_A]) moveDir -= rightDir;
+	if (keyStates[GLFW_KEY_D]) moveDir += rightDir;
+
+	if (!flightOn)
 		if (keyStates[GLFW_KEY_SPACE] && !isJumping) jump();
 
-		glm::vec3 moveDir(0.0f);
-		glm::vec3 forwardDir = glm::normalize(glm::vec3(camera->getCameraFront().x, 0.0, camera->getCameraFront().z));
-		glm::vec3 rightDir = glm::normalize(glm::cross(camera->getCameraFront(), camera->getCameraUp()));
-
-		if (keyStates[GLFW_KEY_W]) moveDir += forwardDir;
-		if (keyStates[GLFW_KEY_S]) moveDir -= forwardDir;
-		if (keyStates[GLFW_KEY_A]) moveDir -= rightDir;
-		if (keyStates[GLFW_KEY_D]) moveDir += rightDir;
-
-
-		// Normalize moveDir for consistent speed in all directions
-		if (glm::length(moveDir) > 0)
-			moveDir = glm::normalize(moveDir) * horizontalAcceleration;
-		else {
-			xVelocity = 0;
-			zVelocity = 0;
-		}
-
-		xVelocity = moveDir.x;
-		zVelocity = moveDir.z;
-
-		glm::vec2 currentVelocity(xVelocity, zVelocity);
-		if (glm::length(currentVelocity) > horizontalAcceleration) {
-			currentVelocity = glm::normalize(currentVelocity) * horizontalAcceleration;
-		}
-
-		xVelocity = currentVelocity.x;
-		zVelocity = currentVelocity.y;
+	if (flightOn) {
+		float v = 0.f;
+		if (keyStates[GLFW_KEY_SPACE])      v += horizontalAcceleration;
+		if (keyStates[GLFW_KEY_LEFT_SHIFT]) v -= horizontalAcceleration;
+		yVelocity = v;
 	}
 
-	else if (!gravityOn) camera->processKeyboardInput(keyStates, deltaTime);
+	if (keyStates[GLFW_MOUSE_BUTTON_LEFT]) { // Break block
+		if (now - lastBlockActionTime > blockActionCooldown) {
+			lastBlockActionTime = now;
+			glm::vec3 result = raycast(camera->getCameraPos(), camera->getCameraFront(), 5, CastType::Break);
+			if (result.x != std::numeric_limits<float>::min()) {
+				world->breakBlock(result.x, result.y, result.z);
+			}
+		}
+	}
+	if (keyStates[GLFW_MOUSE_BUTTON_RIGHT]) { // Place block
+		if (now - lastBlockActionTime > blockActionCooldown) {
+			lastBlockActionTime = now;
+			glm::vec3 result = raycast(camera->getCameraPos(), camera->getCameraFront(), 5, CastType::Place);
+			if (result.x != std::numeric_limits<float>::min()) {
+				if (!placementWouldOverlapAABB(result.x, result.y, result.z))
+					world->placeBlock(result.x, result.y, result.z, BlockID::DIRT);
+			}
+		}
+	}
+
+
+	// Normalize moveDir for consistent speed in all directions
+	if (glm::length(moveDir) > 0)
+		moveDir = glm::normalize(moveDir) * horizontalAcceleration;
+	else {
+		xVelocity = 0;
+		zVelocity = 0;
+	}
+
+	glm::vec2 currentVelocity(moveDir.x, moveDir.z);
+	if (glm::length(currentVelocity) > horizontalAcceleration)
+		currentVelocity = glm::normalize(currentVelocity) * horizontalAcceleration;
+
+	xVelocity = currentVelocity.x;
+	zVelocity = currentVelocity.y;
+
+}
+
+bool Player::placementWouldOverlapAABB(int x, int y, int z) {
+	glm::vec3 center = { x + 0.5f, y + 0.5f, z + 0.5f };
+	glm::vec3 half = { 0.5f, 0.5f, 0.5f };
+
+	const glm::vec3& pCenter = playerAABB.center;
+	const glm::vec3& pHalf = playerAABB.half;
+
+	bool overlapX = std::abs(center.x - pCenter.x) <= (half.x + pHalf.x);
+	bool overlapY = std::abs(center.y - pCenter.y) <= (half.y + pHalf.y);
+	bool overlapZ = std::abs(center.z - pCenter.z) <= (half.z + pHalf.z);
+
+	return overlapX && overlapY && overlapZ;
 }
 
 void Player::jump() {
@@ -290,41 +164,6 @@ void Player::jump() {
 		yVelocity = jumpAcceleration;
 		isJumping = true;
 	}
-}
-
-bool Player::checkAnyPlayerCollision(glm::vec3 blockPos) {
-	glm::vec3 cameraPos = camera->getCameraPos();
-	glm::vec3 playerAABBmin(cameraPos.x - 0.2, cameraPos.y - 1.8, cameraPos.z - 0.2);
-	glm::vec3 playerAABBmax(cameraPos.x + 0.2, cameraPos.y + 0.1, cameraPos.z + 0.2);
-
-	int xMin = floor(playerAABBmin.x);
-	int xMax = floor(playerAABBmax.x);
-	int zMin = floor(playerAABBmin.z);
-	int zMax = floor(playerAABBmax.z);
-	int yMin = floor(playerAABBmin.y);
-	int yMax = floor(playerAABBmax.y);
-
-	// Check for collision on the x-axis
-	for (int x = xMin; x <= xMax; x++) {
-		for (int y = yMin; y <= yMax; y++) {
-			for (int z = zMin; z <= zMax; z++) {
-				if (glm::vec3(x, y, z ) == blockPos) return true;
-			}
-		}
-	}
-
-	return false;
-}
-
-
-void Player::setCamera(Camera* c) {
-	camera = c;
-	camera->toggleFlying(false);
-}
-
-void Player::toggleGravity() {
-	gravityOn = !gravityOn;
-	camera->toggleFlying(!gravityOn);
 }
 
 /*
@@ -380,10 +219,8 @@ glm::vec3 Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius, C
 	while (stepY > 0 ? y < 255 : y >= 0) {
 		if (y < 255 && y >= 0) {
 			if (world->getBlockAtGlobal(x, y, z) != BlockID::AIR) {
-				if (y != 0) {
-					if (mode == CastType::Break) return { x, y, z };
-					return {x + face[0], y + face[1], z + face[2]};
-				}
+				if (mode == CastType::Break && y != 0) return { x, y, z };
+				if (mode == CastType::Place) return {x + face[0], y + face[1], z + face[2]};
 				break;
 			}
 		}
@@ -429,5 +266,6 @@ glm::vec3 Player::raycast(glm::vec3 origin, glm::vec3 direction, float radius, C
 			}
 		}
 	}
+
 	return noHit;
 }

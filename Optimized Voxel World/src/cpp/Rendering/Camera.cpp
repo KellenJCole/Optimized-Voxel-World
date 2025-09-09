@@ -15,54 +15,11 @@ Camera::Camera(float inputSensitivity)
 	projection = glm::perspective(glm::radians((float)WindowDetails::FOV), (float)WindowDetails::WindowWidth / (float)WindowDetails::WindowHeight, 0.1f, 20000.0f);
 	view = glm::mat4(1.0f);
 	updateCameraVectors(); 
-	flying = false; // gravity on 
-
 }
 
 void Camera::update()
 {
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-}
-
-void Camera::processKeyboardInput(std::map<unsigned int, bool> keyStates, float deltaTime)
-{
-	float camSpeed;
-	if (flying) {
-		camSpeed = 50.f * deltaTime;
-		glm::vec3 moveDir;
-		float originalY = cameraPos.y;
-
-		if (keyStates[GLFW_KEY_W]) {
-			moveDir = glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
-			cameraPos += moveDir * camSpeed;
-		}
-
-		if (keyStates[GLFW_KEY_S]) {
-			moveDir = -glm::normalize(glm::vec3(cameraFront.x, 0.0, cameraFront.z));
-			cameraPos += moveDir * camSpeed;
-		}
-
-		if (keyStates[GLFW_KEY_A]) {
-			moveDir = -glm::normalize(glm::cross(cameraFront, cameraUp));
-			cameraPos += moveDir * camSpeed;
-		}
-
-		if (keyStates[GLFW_KEY_D]) {
-			moveDir = glm::normalize(glm::cross(cameraFront, cameraUp));
-			cameraPos += moveDir * camSpeed;
-		}
-
-		if (keyStates[GLFW_KEY_LEFT_SHIFT]) {
-			cameraPos.y -= camSpeed * 0.5;
-			return;
-		}
-		if (keyStates[GLFW_KEY_SPACE]) {
-			cameraPos.y += camSpeed * 0.5;
-			return;
-		}
-
-		cameraPos += moveDir * camSpeed;
-	}
 }
 
 void Camera::processMouseMovement(double xPos, double yPos)
