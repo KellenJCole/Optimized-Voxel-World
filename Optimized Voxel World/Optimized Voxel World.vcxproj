@@ -37,6 +37,7 @@
     <ClCompile Include="src\cpp\Rendering\UI\UserInterface.cpp" />
     <ClCompile Include="src\cpp\Rendering\Buffering\VertexArray.cpp" />
     <ClCompile Include="src\cpp\Rendering\Buffering\VertexBuffer.cpp" />
+    <ClCompile Include="src\cpp\Rendering\Utility\MeshUtils.cpp" />
     <ClCompile Include="src\cpp\Rendering\VertexPool.cpp" />
     <ClCompile Include="src\cpp\Terrain\Chunk.cpp" />
     <ClCompile Include="src\cpp\Terrain\ChunkLoader.cpp" />

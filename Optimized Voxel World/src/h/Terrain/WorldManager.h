@@ -10,8 +10,6 @@
 #include "h/Rendering/Camera.h"
 #include "h/Rendering/TerrainRenderer.h"
 
-using ChunkCoordPair = std::pair<int, int>;
-
 class WorldManager {
 public:
     WorldManager();
@@ -36,37 +34,32 @@ public:
     bool getReadyForPlayerUpdate() { return readyForPlayerUpdate; }
     void switchRenderMethod() { renderer.toggleFillLine(); }
 
-    std::shared_ptr<const std::vector<BlockID>> tryGetChunkSnapshot(ChunkCoordPair key);
+    std::shared_ptr<const std::vector<BlockID>> tryGetChunkSnapshot(ChunkUtils::ChunkCoordPair key);
 
 private:
-    void addVerticesForQuad(std::vector<Vertex>& verts, std::vector<unsigned int>& inds, MeshUtils::Quad quad, ChunkCoordPair chunkCoords,
-        int faceType, int sliceIndex, int levelOfDetail, unsigned int baseIndex);
-    glm::vec3 calculatePosition(MeshUtils::Quad& quad, int corner, size_t faceType, ChunkCoordPair cxcz, int sliceIndex, int levelOfDetail);
-    glm::vec2 calculateTexCoords(MeshUtils::Quad& quad, int corner);
-
-    void genChunkMesh(ChunkCoordPair key);
+    void genChunkMesh(ChunkUtils::ChunkCoordPair key);
 
     void loadChunksAsync(const std::vector<std::pair<int, int>>& loadChunks);
     void unloadChunks(const std::vector<std::pair<int, int>>& loadChunks, bool all);
 
-    int calculateLevelOfDetail(ChunkCoordPair ccp);
+    int calculateLevelOfDetail(ChunkUtils::ChunkCoordPair ccp);
 
     VertexPool* vertexPool;
     TerrainRenderer renderer;
     ChunkLoader chunkLoader;
     ProcGen* proceduralGenerator;
 
-    std::unordered_set<ChunkCoordPair, PairHash> chunkKeys;
-    std::vector<ChunkCoordPair> unmeshedKeysOrder;
-    std::unordered_set<ChunkCoordPair, PairHash> unmeshedKeysSet;
+    std::unordered_set<ChunkUtils::ChunkCoordPair, ChunkUtils::PairHash> chunkKeys;
+    std::vector<ChunkUtils::ChunkCoordPair> unmeshedKeysOrder;
+    std::unordered_set<ChunkUtils::ChunkCoordPair, ChunkUtils::PairHash> unmeshedKeysSet;
 
-    inline void insertUnmeshed(const ChunkCoordPair& key) {
+    inline void insertUnmeshed(const ChunkUtils::ChunkCoordPair& key) {
         if (unmeshedKeysSet.insert(key).second) {
             unmeshedKeysOrder.push_back(key);
         }
     }
 
-    std::vector<ChunkCoordPair> currentRenderChunks;
+    std::vector<ChunkUtils::ChunkCoordPair> currentRenderChunks;
 
     Camera* camera;
 
@@ -81,5 +74,5 @@ private:
     double lastFrustumCheck;
     int renderRadius;
 
-    std::unordered_map<ChunkCoordPair, std::unique_ptr<Chunk>, PairHash> worldMap;
+    std::unordered_map<ChunkUtils::ChunkCoordPair, std::unique_ptr<Chunk>, ChunkUtils::PairHash> worldMap;
 };

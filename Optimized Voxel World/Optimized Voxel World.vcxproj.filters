@@ -159,6 +159,9 @@
     <ClCompile Include="src\cpp\Rendering\EntityAABBRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\cpp\Rendering\Utility\MeshUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\h\Rendering\Utility\BlockGeometry.h">

@@ -64,7 +64,7 @@ void EntityTerrainCollision::refreshLocalChunks(const glm::ivec3& wmin, const gl
     const int pcx1 = cx1 + padChunks;
     const int pcz1 = cz1 + padChunks;
 
-    std::unordered_set<ChunkCoordPair, PairHash> needed;
+    std::unordered_set<ChunkUtils::ChunkCoordPair, ChunkUtils::PairHash> needed;
     needed.reserve((pcx1 - pcx0 + 1) * (pcz1 - pcz0 + 1));
     for (int cx = pcx0; cx <= pcx1; ++cx)
         for (int cz = pcz0; cz <= pcz1; ++cz)

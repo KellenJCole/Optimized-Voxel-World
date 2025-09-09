@@ -64,7 +64,7 @@ bool VertexPool::initialize() {
     return true;
 }
 
-bool VertexPool::allocateBucket(const ChunkCoordPair& key,
+bool VertexPool::allocateBucket(const ChunkUtils::ChunkCoordPair& key,
     size_t vertexBytes,
     size_t indexCount)
 {
@@ -124,14 +124,14 @@ bool VertexPool::allocateBucket(const ChunkCoordPair& key,
     return true;
 }
 
-void VertexPool::updateVertices(const ChunkCoordPair& key, const void* data, size_t bytes) {
+void VertexPool::updateVertices(const ChunkUtils::ChunkCoordPair& key, const void* data, size_t bytes) {
     std::lock_guard<std::mutex> lock(_bucketMtx);
     auto it = _buckets.find(key);
     if (it == _buckets.end() || bytes > it->second.vertexSizeBytes) return;
     std::memcpy((char*)_mapV + it->second.vertexOffsetBytes, data, bytes);
 }
 
-void VertexPool::updateIndices(const ChunkCoordPair& key, const GLuint* data, size_t count) {
+void VertexPool::updateIndices(const ChunkUtils::ChunkCoordPair& key, const GLuint* data, size_t count) {
     std::lock_guard<std::mutex> lock(_bucketMtx);
     auto it = _buckets.find(key);
     if (it == _buckets.end()) {
@@ -149,7 +149,7 @@ void VertexPool::updateIndices(const ChunkCoordPair& key, const GLuint* data, si
         data, count * sizeof(GLuint));
 }
 
-void VertexPool::freeBucket(const ChunkCoordPair& key) {
+void VertexPool::freeBucket(const ChunkUtils::ChunkCoordPair& key) {
     std::lock_guard<std::mutex> lock(_bucketMtx);
     auto it = _buckets.find(key);
     if (it == _buckets.end()) return;
@@ -159,12 +159,12 @@ void VertexPool::freeBucket(const ChunkCoordPair& key) {
     _buckets.erase(it);
 }
 
-bool VertexPool::containsBucket(const ChunkCoordPair& key) const {
+bool VertexPool::containsBucket(const ChunkUtils::ChunkCoordPair& key) const {
     std::lock_guard<std::mutex> lock(_bucketMtx);
     return _buckets.count(key) != 0;
 }
 
-void VertexPool::buildIndirectCommands(const std::vector<ChunkCoordPair>& visible) {
+void VertexPool::buildIndirectCommands(const std::vector<ChunkUtils::ChunkCoordPair>& visible) {
     _commands.clear();
     for (auto& c : visible) {
         {

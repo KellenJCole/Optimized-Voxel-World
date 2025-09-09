@@ -2,20 +2,13 @@
 
 #include "h/Rendering/Utility/GLErrorCatcher.h"
 #include "h/Rendering/Utility/BlockGeometry.h"
+#include "h/Terrain/Utility/ChunkUtils.h"
 #include <glad/glad.h>
 
 #include <unordered_map>
 #include <vector>
 #include <cstddef>
 #include <mutex>
-
-using ChunkCoordPair = std::pair<int, int>;
-
-struct PairHash {
-    size_t operator()(const ChunkCoordPair& p) const {
-        return std::hash<int>{}(p.first) ^ (std::hash<int>{}(p.second) << 1);
-    }
-};
 
 struct BucketInfo {
     size_t vertexOffsetBytes;
@@ -39,16 +32,16 @@ public:
 
     bool initialize();
 
-    bool allocateBucket(const ChunkCoordPair& chunkKey, size_t vertexBytes, size_t indexCount);
+    bool allocateBucket(const ChunkUtils::ChunkCoordPair& chunkKey, size_t vertexBytes, size_t indexCount);
 
-    void updateVertices(const ChunkCoordPair& chunkKey, const void* data, size_t bytes);
-    void updateIndices(const ChunkCoordPair& chunkKey, const GLuint* data, size_t count);
+    void updateVertices(const ChunkUtils::ChunkCoordPair& chunkKey, const void* data, size_t bytes);
+    void updateIndices(const ChunkUtils::ChunkCoordPair& chunkKey, const GLuint* data, size_t count);
 
-    void freeBucket(const ChunkCoordPair& chunkKey);
+    void freeBucket(const ChunkUtils::ChunkCoordPair& chunkKey);
 
-    bool containsBucket(const ChunkCoordPair& chunkKey) const;
+    bool containsBucket(const ChunkUtils::ChunkCoordPair& chunkKey) const;
 
-    void buildIndirectCommands(const std::vector<ChunkCoordPair>& visibleChunks);
+    void buildIndirectCommands(const std::vector<ChunkUtils::ChunkCoordPair>& visibleChunks);
     void renderIndirect() const;
 
     GLuint getVBO() const { return _vbo; }
@@ -70,7 +63,7 @@ private:
     std::vector<std::pair<size_t, size_t>> _freeV, _freeI;
 
     mutable std::mutex _bucketMtx;
-    std::unordered_map<ChunkCoordPair, BucketInfo, PairHash> _buckets;
+    std::unordered_map<ChunkUtils::ChunkCoordPair, BucketInfo, ChunkUtils::PairHash> _buckets;
 
     std::vector<DrawElementsIndirectCommand> _commands;
 };

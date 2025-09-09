@@ -1,6 +1,15 @@
 #pragma once
+#include <utility>
 
 namespace ChunkUtils {
+    using ChunkCoordPair = std::pair<int, int>;
+
+    struct PairHash {
+        size_t operator()(const ChunkCoordPair& p) const {
+            return std::hash<int>{}(p.first) ^ (std::hash<int>{}(p.second) << 1);
+        }
+    };
+
     constexpr int WIDTH = 64;
     constexpr int HEIGHT = 256;
     constexpr int DEPTH = 64;

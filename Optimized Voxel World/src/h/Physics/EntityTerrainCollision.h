@@ -45,5 +45,5 @@ private:
 	static inline int ceili(float v) { return static_cast<int>(std::ceil(v)); }
 
 	WorldManager* world;
-	std::unordered_map<ChunkCoordPair, CachedChunk, PairHash> chunkData_;
+	std::unordered_map<ChunkUtils::ChunkCoordPair, CachedChunk, ChunkUtils::PairHash> chunkData_;
 };

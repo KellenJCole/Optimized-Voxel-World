@@ -15,11 +15,11 @@
 class ProcGen {
 public:
 	ProcGen();
-	int generateChunk(std::vector<BlockID>& chunkVector, std::pair<int, int> chunkCoordPair, int levelOfDetail);
+	int generateChunk(std::vector<BlockID>& chunkVector, ChunkUtils::ChunkCoordPair chunkCoordPair, int levelOfDetail);
 	void setNoiseState(std::vector<float> state);
 	void setRandomNoiseState();
 private:
-	std::vector<std::vector<float>> getHeightMap(std::pair<int, int> chunkCoordPair);
+	std::vector<std::vector<float>> getHeightMap(ChunkUtils::ChunkCoordPair chunkCoordPair);
 	FastNoise heightMapNoise[4];
 	float heightMapWeights[4];
 	int heightAmplitude;
