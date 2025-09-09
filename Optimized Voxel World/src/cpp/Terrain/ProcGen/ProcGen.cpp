@@ -26,7 +26,7 @@ ProcGen::ProcGen() :
 	heightMapWeights[3] = .1f;
 }
 
-int ProcGen::generateChunk(std::vector<BlockID>& chunkVec, std::pair<int, int> chunkCoordPair, int levelOfDetail) {
+int ProcGen::generateChunk(std::vector<BlockID>& chunkVec, ChunkUtils::ChunkCoordPair chunkCoordPair, int levelOfDetail) {
 	std::lock_guard<std::mutex> procGenLock(procGenMutex);
 	setLodVariables(levelOfDetail);
 	std::vector<std::vector<float>> hm = getHeightMap(chunkCoordPair);
@@ -76,7 +76,7 @@ int ProcGen::generateChunk(std::vector<BlockID>& chunkVec, std::pair<int, int> c
 }
 
 
-std::vector<std::vector<float>> ProcGen::getHeightMap(std::pair<int, int> chunkCoordPair) {
+std::vector<std::vector<float>> ProcGen::getHeightMap(ChunkUtils::ChunkCoordPair chunkCoordPair) {
 	int resolution = ChunkUtils::WIDTH / blockResolution; // resolution is halved for each LOD
 	std::vector<std::vector<float>> heightMap(resolution, std::vector<float>(resolution));
 
